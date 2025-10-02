@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.sql.*;
 
-public class RestaurantTypeMapper extends AbstractMapper {
+public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     private Connection c = ConnectionUtils.getConnection();
 
     public RestaurantType findById(int id) {
@@ -47,18 +47,18 @@ public class RestaurantTypeMapper extends AbstractMapper {
         }
         return types;
     }
-    public RestaurantType create(RestaurantType object) {
+    public RestaurantType create(RestaurantType type) {
         try {
             PreparedStatement s = c.prepareStatement("INSERT INTO types_gastronomiques (libelle, description)" +
                     "VALUES (?, ?)");
-            s.setString(1, object.getLabel());
-            s.setString(2, object.getDescription());
+            s.setString(1, type.getLabel());
+            s.setString(2, type.getDescription());
             s.executeUpdate();
-            // TODO get the id and add it to the object
+            // TODO get the id and add it to the type
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return object;
+        return type;
     }
     public boolean update(RestaurantType object) {
         // TODO
@@ -71,6 +71,16 @@ public class RestaurantTypeMapper extends AbstractMapper {
     public boolean deleteById(int id) {
         // TODO
         return false;
+    }
+
+    protected String getSequenceQuery(){
+        return "SELECT seq_types_gastronomiques.NextVal() FROM dual";
+    }
+    protected String getExistsQuery() {
+        return "SELECT numero FROM types_gastronomiques WHERE numero = ?";
+    }
+    protected String getCountQuery() {
+        return "SELECT Count(*) FROM types_gastronomiques";
     }
 
 }
