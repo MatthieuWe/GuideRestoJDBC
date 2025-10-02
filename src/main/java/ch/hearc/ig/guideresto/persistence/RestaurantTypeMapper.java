@@ -10,6 +10,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     private Connection c = ConnectionUtils.getConnection();
 
     public RestaurantType findById(int id) {
+        // TODO checker si le no existe en DB avec this.exists() et lancer une exception
         RestaurantType type = null;
         Connection c = ConnectionUtils.getConnection();
         try {
@@ -60,21 +61,40 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         }
         return type;
     }
-    public boolean update(RestaurantType object) {
-        // TODO
-        return false;
+    public boolean update(RestaurantType type) {
+        try {
+            PreparedStatement s = c.prepareStatement("UPDATE types_gastronomiques" +
+                    "SET libelle = ?, description = ?" +
+                    "WHERE numero = ?");
+            s.setString(1, type.getLabel());
+            s.setString(2, type.getDescription());
+            s.setInt(3, type.getId());
+            s.executeUpdate();
+            return this.exists(type.getId()); // C'est pas très opti ça...
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+            return false;
+        }
     }
-    public boolean delete(RestaurantType object) {
-        // TODO
-        return false;
+    public boolean delete(RestaurantType type) {
+        return this.deleteById(type.getId());
     }
     public boolean deleteById(int id) {
-        // TODO
-        return false;
+        try {
+            PreparedStatement s = c.prepareStatement("DELETE types_gastronomiques" +
+                    "WHERE numero = ?");
+            s.setInt(1, id);
+            s.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+            return false;
+        }
     }
 
     protected String getSequenceQuery(){
-        return "SELECT seq_types_gastronomiques.NextVal() FROM dual";
+        // seq.nextval est spécifique a oracle... bad practice ?
+        return "SELECT seq_types_gastronomiques.CurrVal FROM dual";
     }
     protected String getExistsQuery() {
         return "SELECT numero FROM types_gastronomiques WHERE numero = ?";
