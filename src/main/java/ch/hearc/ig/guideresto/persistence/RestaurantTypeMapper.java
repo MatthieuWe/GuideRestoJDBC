@@ -10,7 +10,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     private Connection c = ConnectionUtils.getConnection();
 
     public RestaurantType findById(int id) {
-        // TODO checker si le no existe en DB avec this.exists() et lancer une exception
         RestaurantType type = null;
         Connection c = ConnectionUtils.getConnection();
         try {
@@ -25,6 +24,8 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                     rs.getString("libelle"),
                     rs.getString("description")
                 );
+            } else {
+                logger.error("No such restaurant type");
             }
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
@@ -54,14 +55,20 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                     "VALUES (?, ?)");
             s.setString(1, type.getLabel());
             s.setString(2, type.getDescription());
-            s.executeUpdate();
-            // TODO get the id and add it to the type
+            int affectedRows = s.executeUpdate();
+            if (affectedRows > 0) {
+                ResultSet rs = s.getGeneratedKeys();
+                type.setId(rs.getInt(1));
+            } else {
+                logger.error("Failed to insert type into the table: ", type.getLabel() );
+            }
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
         return type;
     }
     public boolean update(RestaurantType type) {
+        int affectedRows = 0;
         try {
             PreparedStatement s = c.prepareStatement("UPDATE types_gastronomiques" +
                     "SET libelle = ?, description = ?" +
@@ -69,27 +76,26 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             s.setString(1, type.getLabel());
             s.setString(2, type.getDescription());
             s.setInt(3, type.getId());
-            s.executeUpdate();
-            return this.exists(type.getId()); // C'est pas très opti ça...
+            affectedRows = s.executeUpdate();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
-            return false;
         }
+        return affectedRows > 0;
     }
     public boolean delete(RestaurantType type) {
         return this.deleteById(type.getId());
     }
     public boolean deleteById(int id) {
+        int affectedRows = 0;
         try {
             PreparedStatement s = c.prepareStatement("DELETE types_gastronomiques" +
                     "WHERE numero = ?");
             s.setInt(1, id);
-            s.executeUpdate();
-            return true;
+            affectedRows = s.executeUpdate();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
-            return false;
         }
+        return affectedRows > 0;
     }
 
     protected String getSequenceQuery(){
