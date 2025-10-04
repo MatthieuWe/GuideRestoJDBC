@@ -21,17 +21,27 @@ public class FakeItems {
     private static void init() {
         initDone = true;
 
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+
         restaurants = new LinkedHashSet<>();
-        types = new LinkedHashSet<>();
+        types = new LinkedHashSet<>(typeMapper.findAll());
         criterias = new LinkedHashSet<>();
         cities = new LinkedHashSet<>();
 
-        RestaurantType typeSuisse = new RestaurantType(1, "Cuisine suisse", "Cuisine classique et plats typiquement suisses");
-        RestaurantType typeGastro = new RestaurantType(2, "Restaurant gastronomique", "Restaurant gastronomique de haut standing");
+        RestaurantType typeSuisse = new RestaurantType("Cuisine suisse", "Cuisine classique et plats typiquement suisses");
+        RestaurantType typeGastro = new RestaurantType("Restaurant gastronomique", "Restaurant gastronomique de haut standing");
+        if (!types.contains(typeSuisse)) {
+            typeMapper.create(typeSuisse);
+            types.add(typeSuisse);
+        }
+        if (!types.contains(typeGastro)) {
+            typeMapper.create(typeGastro);
+            types.add(typeGastro);
+        }
 
-        types.add(typeSuisse);
-        types.add(typeGastro);
-        types.add(new RestaurantType(3, "Pizzeria", "Pizzas et autres spécialités italiennes"));
+        // méthode dite "du bourrin" selon Eddy.
+        // on essaie de le mettre dans la base et si cela lève une erreur on gère. voir méthode create()
+        types.add(typeMapper.create(new RestaurantType("Pizzeria", "Pizzas et autres spécialités italiennes")));
 
         EvaluationCriteria critService = new EvaluationCriteria(1, "Service", "Qualité du service");
         EvaluationCriteria critCuisine = new EvaluationCriteria(2, "Cuisine", "Qualité de la nourriture");

@@ -7,11 +7,11 @@ import java.util.Set;
 import java.sql.*;
 
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
+    // est-ce que c'est OK de la mettre ici?
     private Connection c = ConnectionUtils.getConnection();
 
     public RestaurantType findById(int id) {
         RestaurantType type = null;
-        Connection c = ConnectionUtils.getConnection();
         try {
             PreparedStatement s = c.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
             s.setInt(1, id);
@@ -20,9 +20,9 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             // sinon on remplirait une List avec une boucle while
             if(rs.next()) {
                 type = new RestaurantType(
-                    rs.getInt("numero"),
-                    rs.getString("libelle"),
-                    rs.getString("description")
+                        rs.getInt("numero"),
+                        rs.getString("libelle"),
+                        rs.getString("description")
                 );
             } else {
                 logger.error("No such restaurant type");
@@ -32,6 +32,28 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         }
         return type;
     }
+    public RestaurantType findByLabel(String label) {
+        RestaurantType type = null;
+        try {
+            PreparedStatement s = c.prepareStatement("SELECT * FROM types_gastronomiques WHERE libelle = ?");
+            s.setString(1, label);
+            ResultSet rs = s.executeQuery();
+            // le libelle est une colonne a contrainte unique
+            if(rs.next()) {
+                type = new RestaurantType(
+                        rs.getInt("numero"),
+                        rs.getString("libelle"),
+                        rs.getString("description")
+                );
+            } else {
+                logger.error("No such restaurant type");
+            }
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return type;
+    }
+
     public Set<RestaurantType> findAll() {
         Set<RestaurantType> types = new HashSet<>();
         try {
@@ -60,9 +82,15 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                 ResultSet rs = s.getGeneratedKeys();
                 type.setId(rs.getInt(1));
             } else {
-                logger.error("Failed to insert type into the table: ", type.getLabel() );
+                logger.warn("Failed to insert type into the table: ", type.getLabel() + ". Continuing..." );
             }
         } catch (SQLException e) {
+            if (e.getErrorCode() == 1) {
+                // le type existe deja: violation de contrainte unique sur le libelle
+                // -> on gère. retourne l'id comme si tout s'était bien passé.
+                // le couplage c'est pas bien. mais c'est pratique. mais c'est pas bien.
+                type = this.findByLabel(type.getLabel());
+            }
             logger.error("SQLException: {}", e.getMessage());
         }
         return type;
