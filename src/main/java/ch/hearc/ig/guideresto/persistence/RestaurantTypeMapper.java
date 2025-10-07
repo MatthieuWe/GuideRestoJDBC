@@ -120,7 +120,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         return affectedRows > 0;
     }
     public boolean delete(RestaurantType type) {
-        // TODO this is shit because it could be a type without id and we'd have to search by label
         return this.deleteById(type.getId());
     }
     public boolean deleteById(int id) {

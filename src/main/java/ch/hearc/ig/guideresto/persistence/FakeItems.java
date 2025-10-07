@@ -47,19 +47,6 @@ public class FakeItems {
         // on essaie de le mettre dans la base et si cela lève une erreur on gère. voir méthode create()
         types.add(typeMapper.create(new RestaurantType("Pizzeria", "Pizzas et autres spécialités italiennes")));
 
-        // juste pour les tests
-        RestaurantType typeChinois = new RestaurantType("Cuisine chinoise", "texte manquant");
-        typeChinois =  typeMapper.create(typeChinois);
-        logger.info("type créé pour le test: " + typeChinois.getLabel());
-        typeChinois.setDescription("Cuisine traditionelle chinoise");
-        if (typeMapper.update(typeChinois)) {
-            logger.info("type mis à jour pour le test: " + typeChinois.getLabel());
-        }
-        if (typeMapper.delete(typeChinois)) {
-
-            logger.info("type effacée pour le test: " + typeChinois.getLabel());
-        }
-
         EvaluationCriteria critService = new EvaluationCriteria(1, "Service", "Qualité du service");
         EvaluationCriteria critCuisine = new EvaluationCriteria(2, "Cuisine", "Qualité de la nourriture");
         EvaluationCriteria critCadre = new EvaluationCriteria(3, "Cadre", "L'ambiance et la décoration sont-elles bonnes ?");
