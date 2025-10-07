@@ -27,6 +27,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             } else {
                 logger.error("No such restaurant type");
             }
+            rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -48,6 +49,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             } else {
                 logger.error("No such restaurant type");
             }
+            rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -66,6 +68,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                         rs.getString("description")
                 ));
             }
+            rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -73,53 +76,61 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     }
     public RestaurantType create(RestaurantType type) {
         try {
-            PreparedStatement s = c.prepareStatement("INSERT INTO types_gastronomiques (libelle, description)" +
-                    "VALUES (?, ?)");
+            String generatedColumns[] = { "numero" };
+            PreparedStatement s = c.prepareStatement(
+                    "INSERT INTO types_gastronomiques (libelle, description)" +
+                    "VALUES (?, ?)",
+                    generatedColumns);
             s.setString(1, type.getLabel());
             s.setString(2, type.getDescription());
-            int affectedRows = s.executeUpdate();
-            if (affectedRows > 0) {
-                ResultSet rs = s.getGeneratedKeys();
+            s.executeUpdate();
+            ResultSet rs = s.getGeneratedKeys();
+            if (rs.next()) {
                 type.setId(rs.getInt(1));
             } else {
                 logger.warn("Failed to insert type into the table: ", type.getLabel() + ". Continuing..." );
             }
+            rs.close();
+            c.commit();
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) {
                 // le type existe deja: violation de contrainte unique sur le libelle
                 // -> on gère. retourne l'id comme si tout s'était bien passé.
-                // le couplage c'est pas bien. mais c'est pratique. mais c'est pas bien.
                 type = this.findByLabel(type.getLabel());
-            }
+                logger.warn("Type already exists: " + type.getLabel() + ". Continuing...");
+            } else {
             logger.error("SQLException: {}", e.getMessage());
+            }
         }
         return type;
     }
     public boolean update(RestaurantType type) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement("UPDATE types_gastronomiques" +
-                    "SET libelle = ?, description = ?" +
-                    "WHERE numero = ?");
+            PreparedStatement s = c.prepareStatement(
+                    "UPDATE types_gastronomiques SET libelle = ?, description = ? WHERE numero = ?");
             s.setString(1, type.getLabel());
             s.setString(2, type.getDescription());
             s.setInt(3, type.getId());
             affectedRows = s.executeUpdate();
+            c.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
         return affectedRows > 0;
     }
     public boolean delete(RestaurantType type) {
+        // TODO this is shit because it could be a type without id and we'd have to search by label
         return this.deleteById(type.getId());
     }
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement("DELETE types_gastronomiques" +
-                    "WHERE numero = ?");
+            PreparedStatement s = c.prepareStatement(
+                    "DELETE types_gastronomiques WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
+            c.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -127,8 +138,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     }
 
     protected String getSequenceQuery(){
-        // seq.nextval est spécifique a oracle... bad practice ?
-        return "SELECT seq_types_gastronomiques.CurrVal FROM dual";
+        return "SELECT seq_types_gastronomiques.NextVal FROM dual";
     }
     protected String getExistsQuery() {
         return "SELECT numero FROM types_gastronomiques WHERE numero = ?";

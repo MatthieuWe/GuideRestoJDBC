@@ -1,6 +1,8 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -17,6 +19,8 @@ public class FakeItems {
     private static Set<City> cities;
 
     private static boolean initDone = false;
+    private static final Logger logger = LogManager.getLogger();
+
 
     private static void init() {
         initDone = true;
@@ -42,6 +46,19 @@ public class FakeItems {
         // méthode dite "du bourrin" selon Eddy.
         // on essaie de le mettre dans la base et si cela lève une erreur on gère. voir méthode create()
         types.add(typeMapper.create(new RestaurantType("Pizzeria", "Pizzas et autres spécialités italiennes")));
+
+        // juste pour les tests
+        RestaurantType typeChinois = new RestaurantType("Cuisine chinoise", "texte manquant");
+        typeChinois =  typeMapper.create(typeChinois);
+        logger.info("type créé pour le test: " + typeChinois.getLabel());
+        typeChinois.setDescription("Cuisine traditionelle chinoise");
+        if (typeMapper.update(typeChinois)) {
+            logger.info("type mis à jour pour le test: " + typeChinois.getLabel());
+        }
+        if (typeMapper.delete(typeChinois)) {
+
+            logger.info("type effacée pour le test: " + typeChinois.getLabel());
+        }
 
         EvaluationCriteria critService = new EvaluationCriteria(1, "Service", "Qualité du service");
         EvaluationCriteria critCuisine = new EvaluationCriteria(2, "Cuisine", "Qualité de la nourriture");
