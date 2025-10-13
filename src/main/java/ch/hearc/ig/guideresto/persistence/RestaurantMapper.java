@@ -1,5 +1,6 @@
 package ch.hearc.ig.guideresto.persistence;
 
+import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.business.Localisation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.business.RestaurantType;
@@ -20,9 +21,9 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             ResultSet rs = s.executeQuery();
 
             if(rs.next()) {
-                // TODO find type and adresse in DB
-                RestaurantType type = new RestaurantType();
-                Localisation address = new Localisation();
+                City city = new CityMapper().findById(rs.getInt("fk_ville"));
+                Localisation address = new Localisation(rs.getString("adresse"), city);
+                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
                 resto = new Restaurant(
                         rs.getInt("numero"),
                         rs.getString("nom"),
@@ -47,9 +48,16 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             PreparedStatement s = c.prepareStatement("SELECT * FROM restaurants");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                // TODO find type and adresse in DB
-                RestaurantType type = new RestaurantType();
-                Localisation address = new Localisation();
+                /*
+                Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
+                Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
+                    -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
+                    pour retrouver tous les restos sans les charger à double depuis la DB...
+                TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
+                 */
+                City city = new CityMapper().findById(rs.getInt("fk_ville"));
+                Localisation address = new Localisation(rs.getString("adresse"), city);
+                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
                 restos.add(new Restaurant(
                         rs.getInt("numero"),
                         rs.getString("nom"),
