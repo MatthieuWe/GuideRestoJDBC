@@ -21,13 +21,20 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
+            Boolean appreciation;
+            if ("T" == rs.getString("appreciation")) {
+                appreciation=true;
+            } else {
+                appreciation=false;
+            }
+
             if (rs.next()) {
                 Restaurant restaurant = new RestaurantMapper().findById(rs.getInt("fk_rest"));
-                BasicEvaluation basicEvaluation1 = new BasicEvaluation(
+                basicEvaluation = new BasicEvaluation(
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
                         restaurant,
-                        rs.getBoolean("appreciation"), //je suis pas convaincue du boolean ??? je crois que ça va pas sortir juste..
+                        appreciation,
                         rs.getString("adresse_ip")
                 );
             } else {
@@ -49,11 +56,19 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             while (rs.next()) {
                 //beep boop identity map ???
                 Restaurant restaurant = new RestaurantMapper().findById(rs.getInt("fk_rest"));
+
+                Boolean appreciation;
+                if ("T" == rs.getString("appreciation")) {
+                	appreciation=true;
+                } else {
+                	appreciation=false;
+                }
+
                 basicEvaluations.add(new BasicEvaluation(
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
                         restaurant,
-                        rs.getBoolean("appreciation"), //je suis pas convaincue du boolean ??? je crois que ça va pas sortir juste..
+                        appreciation, //🥰🥰🥰🥰🥰🥰 ça marchera !
                         rs.getString("adresse_ip")
                 ));
             }
@@ -74,7 +89,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
                     generatedColumns);
             s.setDate(1, new java.sql.Date(basicEvaluation.getVisitDate().getTime()));
             s.setInt(2, basicEvaluation.getRestaurant().getId());
-            s.setBoolean(3, basicEvaluation.getLikeRestaurant());
+            s.setString(3, basicEvaluation.getLikeRestaurant() ? "T" : "F"); //ewewewewe je veux pas
             s.setString(4, basicEvaluation.getIpAddress());
             s.executeUpdate();
             ResultSet rs = s.getGeneratedKeys();
@@ -102,7 +117,8 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
                             " WHERE numero = ?");
             s.setDate(1, new java.sql.Date(basicEvaluation.getVisitDate().getTime()));
             s.setInt(2, basicEvaluation.getRestaurant().getId());
-            s.setBoolean(3, basicEvaluation.getLikeRestaurant());
+
+            s.setString(3, basicEvaluation.getLikeRestaurant() ? "T" : "F"); //ew ew ew ew j'aime pas quand c'est écrit comme ça 🤮🤮🤮🤮
             s.setString(4, basicEvaluation.getIpAddress());
             s.setInt(5, basicEvaluation.getId());
             affectedRows = s.executeUpdate();

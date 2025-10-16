@@ -62,7 +62,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
                             "VALUES (?, ?, ?, ?)",
                     generatedColumns);
             s.setInt(1, completeEvaluation.getId());
-            s.setDate(2, (Date) completeEvaluation.getVisitDate()); //je suis obligéede faire comme ça sinon, il sort pas une vrai date java ??? je suis pas ^sure de moi..
+            s.setDate(2, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
             s.setString(3, completeEvaluation.getComment());
             s.setString(4, completeEvaluation.getUsername());
             s.executeUpdate();
@@ -86,7 +86,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
                     "UPDATE commentaires"+
                             "SET date_eval = ?, commentaire = ?, nom_utilisateur = ?, fk_rest = ? "
                     +"WHERE numero = ?");
-            s.setDate(2, (Date) completeEvaluation.getVisitDate()); //je suis obligéede faire comme ça sinon, il sort pas une vrai date java ??? je suis pas ^sure de moi..
+            s.setDate(2, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
             s.setString(3, completeEvaluation.getComment());
             s.setString(4, completeEvaluation.getUsername());
             s.setInt(5, completeEvaluation.getRestaurant().getId());
