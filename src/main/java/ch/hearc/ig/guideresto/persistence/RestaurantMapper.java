@@ -16,24 +16,20 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Restaurant findById(int id) {
         Restaurant resto = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM restaurants WHERE numero = ?");
+            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM restaurants r" +
+                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                    " WHERE numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
             if(rs.next()) {
-                City city = new CityMapper().findById(rs.getInt("fk_ville"));
-                Localisation address = new Localisation(rs.getString("adresse"), city);
-                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                resto = new Restaurant(
-                        rs.getInt("numero"),
-                        rs.getString("nom"),
-                        rs.getString("description"),
-                        rs.getString("site_web"),
-                        address,
-                        type
-                );
+                resto = this.loadRestaurant(rs);
             } else {
-                logger.error("No restaurant found");
+                logger.error("No restaurant found with id " + id);
             }
             rs.close();
         } catch (SQLException e) {
@@ -45,33 +41,46 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Set<Restaurant> findAll() {
         Set<Restaurant> restos = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM restaurants");
+            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM restaurants r" +
+                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                /*
-                Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
-                Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
-                    -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
-                    pour retrouver tous les restos sans les charger à double depuis la DB...
-                TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
-                 */
-                City city = new CityMapper().findById(rs.getInt("fk_ville"));
-                Localisation address = new Localisation(rs.getString("adresse"), city);
-                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                restos.add(new Restaurant(
-                        rs.getInt("numero"),
-                        rs.getString("nom"),
-                        rs.getString("description"),
-                        rs.getString("site_web"),
-                        address,
-                        type
-                ));
+                restos.add(this.loadRestaurant(rs));
             }
             rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
         return restos;
+    }
+    private Restaurant loadRestaurant(ResultSet rs) throws SQLException {
+        /*
+        Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
+        Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
+            -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
+            pour retrouver tous les restos sans les charger à double depuis la DB...
+        TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
+         */
+        // Eager Loading relation n..1
+        City city = new City(rs.getInt("num_ville"),
+                rs.getString("code_postal"),
+                rs.getString("nom_ville"));
+        Localisation address = new Localisation(rs.getString("adresse"), city);
+        RestaurantType type = new RestaurantType(rs.getInt("num_type"),
+                rs.getString("libelle"),
+                rs.getString("desc_type"));
+        Restaurant resto = new Restaurant(
+                rs.getInt("num_resto"),
+                rs.getString("nom"),
+                rs.getString("desc_resto"),
+                rs.getString("site_web"),
+                address,
+                type);
+        return resto;
     }
     public Restaurant create(Restaurant resto) {
         try {
