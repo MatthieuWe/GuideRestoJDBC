@@ -1,6 +1,9 @@
 package ch.hearc.ig.guideresto.business;
 
+import ch.hearc.ig.guideresto.persistence.RestaurantMapper;
+
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -26,7 +29,7 @@ public class City implements IBusinessObject {
         this.id = id;
         this.zipCode = zipCode;
         this.cityName = cityName;
-        this.restaurants = new HashSet();
+        this.restaurants = null;
     }
 
     public Integer getId() {
@@ -54,6 +57,10 @@ public class City implements IBusinessObject {
     }
 
     public Set<Restaurant> getRestaurants() {
+        if (restaurants == null) {
+            RestaurantMapper restaurantMapper = new RestaurantMapper();
+            restaurants = restaurantMapper.findForCity(this);
+        }
         return restaurants;
     }
 

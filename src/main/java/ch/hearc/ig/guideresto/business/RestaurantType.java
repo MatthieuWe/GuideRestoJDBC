@@ -1,5 +1,7 @@
 package ch.hearc.ig.guideresto.business;
 
+import ch.hearc.ig.guideresto.persistence.RestaurantMapper;
+
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -23,7 +25,7 @@ public class RestaurantType implements IBusinessObject {
     }
 
     public RestaurantType(Integer id, String label, String description) {
-        this.restaurants = new HashSet();
+        this.restaurants = null;
         this.id = id;
         this.label = label;
         this.description = description;
@@ -59,6 +61,10 @@ public class RestaurantType implements IBusinessObject {
     }
 
     public Set<Restaurant> getRestaurants() {
+        if (restaurants == null) {
+            RestaurantMapper restaurantMapper = new RestaurantMapper();
+            restaurants = restaurantMapper.findForType(this);
+        }
         return restaurants;
     }
 
