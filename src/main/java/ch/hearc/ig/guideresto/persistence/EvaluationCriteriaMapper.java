@@ -50,8 +50,8 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     public EvaluationCriteria create(EvaluationCriteria object) {
         String sql = "INSERT INTO CRITERES_EVALUATION(numero, nom, description) VALUES(?, ?, ?)";
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, object.getNumero());
-            ps.setString(2, object.getNom());
+            ps.setInt(1, object.getId());
+            ps.setString(2, object.getName());
             ps.setString(3, object.getDescription());
             int affected = ps.executeUpdate();
             if (affected == 0) return null;
@@ -71,8 +71,8 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     public boolean update(EvaluationCriteria object) {
         String sql = "UPDATE CRITERES_EVALUATION SET numero = ?, nom = ?, description = ? WHERE id = ?";
         try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, object.getNumero());
-            ps.setString(2, object.getNom());
+            ps.setInt(1, object.getId());
+            ps.setString(2, object.getName());
             ps.setString(3, object.getDescription());
             ps.setInt(4, object.getId());
             return ps.executeUpdate() > 0;
