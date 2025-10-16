@@ -38,6 +38,25 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return resto;
     }
 
+    public Set<Restaurant> findForCity(City city) {
+        Set<Restaurant> restos = new HashSet<>();
+        try {
+            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM restaurants r" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                    " WHERE r.fk_ville = ?");
+            s.setInt(1, city.getId());
+            ResultSet rs = s.executeQuery();
+            while(rs.next()) {
+                restos.add(this.loadRestaurant(rs, city));
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return restos;
+    }
     public Set<Restaurant> findAll() {
         Set<Restaurant> restos = new HashSet<>();
         try {
@@ -57,7 +76,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
         return restos;
     }
-    private Restaurant loadRestaurant(ResultSet rs) throws SQLException {
+    private Restaurant loadRestaurant(ResultSet rs, City city) throws SQLException {
         /*
         Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
         Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
@@ -66,9 +85,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
          */
         // Eager Loading relation n..1
-        City city = new City(rs.getInt("num_ville"),
-                rs.getString("code_postal"),
-                rs.getString("nom_ville"));
         Localisation address = new Localisation(rs.getString("adresse"), city);
         RestaurantType type = new RestaurantType(rs.getInt("num_type"),
                 rs.getString("libelle"),
@@ -81,6 +97,12 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 address,
                 type);
         return resto;
+    }
+    private Restaurant loadRestaurant(ResultSet rs) throws SQLException {
+        City city = new City(rs.getInt("num_ville"),
+                rs.getString("code_postal"),
+                rs.getString("nom_ville"));
+        return this.loadRestaurant(rs, city);
     }
     public Restaurant create(Restaurant resto) {
         try {
