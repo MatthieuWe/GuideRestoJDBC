@@ -20,6 +20,7 @@ public class ConnectionUtils {
 
     private static final Logger logger = LogManager.getLogger();
 
+    //note Sila pour la compréhension : c'est un Singleton parce que c'est un static. Il va être fait une fois et réutilisé systématiquement en fait.
     private static Connection connection;
 
     public static Connection getConnection() {
