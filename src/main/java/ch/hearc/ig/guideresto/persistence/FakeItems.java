@@ -1,10 +1,10 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.Date;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author cedric.baudet
@@ -17,21 +17,47 @@ public class FakeItems {
     private static Set<City> cities;
 
     private static boolean initDone = false;
+    private static final Logger logger = LogManager.getLogger();
+
 
     private static void init() {
         initDone = true;
 
-        restaurants = new LinkedHashSet<>();
-        types = new LinkedHashSet<>();
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+        CityMapper cityMapper = new CityMapper();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+
+        // I know it's shit. but we need to be able to get the ID in the variables to init.
+        // We'll be able to get rid of everything when the mappers and identity map are fully implemented
+        Map<Integer, Restaurant> restaurantsScopedMap = new LinkedHashMap<>();
+        Map<Integer, RestaurantType> typesScopedMap = new LinkedHashMap<>();
+        Map<Integer, EvaluationCriteria> criteriasScopedMap = new LinkedHashMap<>();
+        Map<Integer, City> citiesScopedMap = new LinkedHashMap<>();
+
+        restaurants = new LinkedHashSet<>(restaurantMapper.findAll());
+        types = new LinkedHashSet<>(typeMapper.findAll());
         criterias = new LinkedHashSet<>();
-        cities = new LinkedHashSet<>();
+        cities = new LinkedHashSet<>(cityMapper.findAll());
 
-        RestaurantType typeSuisse = new RestaurantType(1, "Cuisine suisse", "Cuisine classique et plats typiquement suisses");
-        RestaurantType typeGastro = new RestaurantType(2, "Restaurant gastronomique", "Restaurant gastronomique de haut standing");
+        RestaurantType typeSuisse = new RestaurantType("Cuisine suisse", "Cuisine classique et plats typiquement suisses");
+        RestaurantType typeGastro = new RestaurantType("Restaurant gastronomique", "Restaurant gastronomique de haut standing");
+        if (!types.contains(typeSuisse)) {
+            typeMapper.create(typeSuisse);
+            types.add(typeSuisse);
+        }
+        if (!types.contains(typeGastro)) {
+            typeMapper.create(typeGastro);
+            types.add(typeGastro);
+        }
+        // méthode dite "du bourrin" selon Eddy.
+        // on essaie de le mettre dans la base et si cela lève une erreur on gère. voir méthode create()
+        types.add(typeMapper.create(new RestaurantType("Pizzeria", "Pizzas et autres spécialités italiennes")));
 
-        types.add(typeSuisse);
-        types.add(typeGastro);
-        types.add(new RestaurantType(3, "Pizzeria", "Pizzas et autres spécialités italiennes"));
+        for(RestaurantType t : types) {
+            typesScopedMap.put(t.hashCode(), t);
+        }
+        typeSuisse.setId(typesScopedMap.get(typeSuisse.hashCode()).getId());
+        typeGastro.setId(typesScopedMap.get(typeGastro.hashCode()).getId());
 
         EvaluationCriteria critService = new EvaluationCriteria(1, "Service", "Qualité du service");
         EvaluationCriteria critCuisine = new EvaluationCriteria(2, "Cuisine", "Qualité de la nourriture");
@@ -41,10 +67,26 @@ public class FakeItems {
         criterias.add(critCuisine);
         criterias.add(critCadre);
 
-        City city = new City(1, "2000", "Neuchatel");
-        cities.add(city);
+        City city = new City("2000", "Neuchatel");
+        if (!cities.contains(city)) {
+            cityMapper.create(city);
+            cities.add(city);
+        }
+        for (City c : cities) {
+            citiesScopedMap.put(c.hashCode(), c);
+        }
+        city.setId(citiesScopedMap.get(city.hashCode()).getId());
 
-        Restaurant restaurant = new Restaurant(1, "Fleur-de-Lys", "Pizzeria au centre de Neuchâtel", "http://www.pizzeria-neuchatel.ch/", "Rue du Bassin 10", city, typeSuisse);
+        Restaurant restaurant = new Restaurant("Fleur-de-Lys", "Pizzeria au centre de Neuchâtel", "http://www.pizzeria-neuchatel.ch/", "Rue du Bassin 10", city, typeSuisse);
+        if (!restaurants.contains(restaurant)) {
+            restaurantMapper.create(restaurant);
+            restaurants.add(restaurant);
+        }
+        for (Restaurant r : restaurants) {
+            restaurantsScopedMap.put(r.hashCode(), r);
+        }
+        restaurant.setId(restaurantsScopedMap.get(restaurant.hashCode()).getId());
+
         city.getRestaurants().add(restaurant);
         typeSuisse.getRestaurants().add(restaurant);
         restaurant.getEvaluations().add(new BasicEvaluation(1, new Date(), restaurant, true, "1.2.3.4"));
@@ -63,9 +105,17 @@ public class FakeItems {
         ce.getGrades().add(new Grade(6, 4, ce, critCadre));
         restaurant.getEvaluations().add(ce);
 
-        restaurants.add(restaurant);
 
-        restaurant = new Restaurant(2, "La Maison du Prussien", "Restaurant gastronomique renommé de Neuchâtel", "www.hotel-prussien.ch/‎", "Rue des Tunnels 11", city, typeGastro);
+        restaurant = new Restaurant("La Maison du Prussien", "Restaurant gastronomique renommé de Neuchâtel", "www.hotel-prussien.ch/‎", "Rue des Tunnels 11", city, typeGastro);
+        if (!restaurants.contains(restaurant)) {
+            restaurantMapper.create(restaurant);
+            restaurants.add(restaurant);
+        }
+        for (Restaurant r : restaurants) {
+            restaurantsScopedMap.put(r.hashCode(), r);
+        }
+        restaurant.setId(restaurantsScopedMap.get(restaurant.hashCode()).getId());
+
         typeGastro.getRestaurants().add(restaurant);
         restaurant.getEvaluations().add(new BasicEvaluation(4, new Date(), restaurant, true, "1.2.3.7"));
         restaurant.getEvaluations().add(new BasicEvaluation(5, new Date(), restaurant, true, "1.2.3.8"));
@@ -81,8 +131,6 @@ public class FakeItems {
         ce.getGrades().add(new Grade(11, 5, ce, critCuisine));
         ce.getGrades().add(new Grade(12, 5, ce, critCadre));
         restaurant.getEvaluations().add(ce);
-
-        restaurants.add(restaurant);
     }
 
     public static Set<Restaurant> getAllRestaurants() {

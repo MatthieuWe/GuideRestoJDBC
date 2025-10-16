@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.business;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -60,4 +61,15 @@ public class City implements IBusinessObject {
         this.restaurants = restaurants;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        City city = (City) o;
+        return Objects.equals(zipCode, city.zipCode) && Objects.equals(cityName, city.cityName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(zipCode, cityName);
+    }
 }

@@ -3,6 +3,7 @@ package ch.hearc.ig.guideresto.business;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -19,9 +20,12 @@ public class Restaurant implements IBusinessObject {
     private RestaurantType type;
 
     public Restaurant() {
-        this(null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null);
     }
 
+    public Restaurant(String name, String description, String website, String street, City city, RestaurantType type) {
+        this(null, name, description, website, street, city, type);
+    }
     public Restaurant(Integer id, String name, String description, String website, String street, City city, RestaurantType type) {
         this.id = id;
         this.name = name;
@@ -100,5 +104,17 @@ public class Restaurant implements IBusinessObject {
 
     public boolean hasEvaluations() {
         return CollectionUtils.isNotEmpty(evaluations);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Restaurant that = (Restaurant) o;
+        return Objects.equals(name, that.name) && Objects.equals(description, that.description) && Objects.equals(website, that.website) && Objects.equals(address, that.address) && Objects.equals(type, that.type);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, description, website, address, type);
     }
 }
