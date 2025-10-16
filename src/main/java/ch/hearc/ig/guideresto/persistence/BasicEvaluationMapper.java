@@ -115,9 +115,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
 
     @Override
     public boolean delete(BasicEvaluation basicEvaluation) {
-        //problème... id est putain de privé c'est dans la classe abstraite...
-        //return this.delete(basicEvaluation.getId());
-        return null;
+        return this.deleteById(basicEvaluation.getId());
     }
 
     @Override
