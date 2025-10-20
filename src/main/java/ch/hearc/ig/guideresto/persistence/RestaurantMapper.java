@@ -61,7 +61,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         Set<Restaurant> restos = new HashSet<>();
         try {
             PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
-                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal" +
                     " FROM restaurants r" +
                     " INNER JOIN villes v ON r.fk_ville = v.numero" +
                     " WHERE r.fk_type = ?");
@@ -73,6 +73,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
+            e.printStackTrace();
         }
         return restos;
     }
@@ -190,12 +191,26 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         int affectedRows = 0;
         try {
             PreparedStatement s = c.prepareStatement(
+                    "DELETE likes WHERE fk_rest = ?");
+            s.setInt(1, id);
+            s.executeUpdate();
+            s = c.prepareStatement(
+                    "DELETE notes WHERE fk_comm IN " +
+                            "(SELECT numero FROM commentaires WHERE fk_rest = ?)");
+            s.setInt(1, id);
+            s.executeUpdate();
+            s = c.prepareStatement(
+                    "DELETE commentaires WHERE fk_rest = ?");
+            s.setInt(1, id);
+            s.executeUpdate();
+            s = c.prepareStatement(
                     "DELETE restaurants WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
             c.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
+            e.printStackTrace();
         }
         return affectedRows > 0;
     }

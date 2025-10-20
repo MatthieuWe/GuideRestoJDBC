@@ -58,13 +58,12 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         try {
             String generatedColumns[] = { "numero" };
             PreparedStatement s = c.prepareStatement(
-                    "INSERT INTO commentaires (numero, date_eval, commentaire, nom_utilisateur)" +
-                            "VALUES (?, ?, ?, ?)",
+                    "INSERT INTO commentaires (date_eval, commentaire, nom_utilisateur)" +
+                            "VALUES (?, ?, ?)",
                     generatedColumns);
-            s.setInt(1, completeEvaluation.getId());
-            s.setDate(2, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
-            s.setString(3, completeEvaluation.getComment());
-            s.setString(4, completeEvaluation.getUsername());
+            s.setDate(1, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
+            s.setString(2, completeEvaluation.getComment());
+            s.setString(3, completeEvaluation.getUsername());
             s.executeUpdate();
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
