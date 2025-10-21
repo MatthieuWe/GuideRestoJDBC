@@ -30,15 +30,23 @@ public class GradeMapper extends AbstractMapper<Grade> {
     }
     private Grade loadGrade(ResultSet rs) throws SQLException {
         CompleteEvaluation eval = new CompleteEvaluation(rs.getInt("NumeroCE"),
+                null, //voir comment mettre une date plus tard
+                null, //restaurant to be implemented later
                 rs.getString("nomCe"),
                 rs.getString("descriptionCe"));
 
 
-        EvaluationCriteria crit = new EvaluationCriteriaMapper().findById(rs.getInt("fk_crit"));
+        EvaluationCriteria crit = new EvaluationCriteria(
+                rs.getInt("numCom"),
+                rs.getString("nomCom"),
+                rs.getString("descriptionCom")
+        );
 
         return new Grade(
                 rs.getInt("numero"),
-                rs.getInt("note")
+                rs.getInt("note"),
+                eval,
+                crit
         );
     }
 
@@ -51,20 +59,13 @@ public class GradeMapper extends AbstractMapper<Grade> {
                     "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
                     "FROM notes n" +
                     "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
-                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"
+                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
                     "WHERE id = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
             if(rs.next()) {
                 grade = this.loadGrade(rs);
-
-                grade = new Grade(
-                        rs.getInt("numero"),
-                        rs.getInt("note"),
-                        eval,
-                        crit
-                ); //criteria to be implemented later
             } else {
                 logger.error("No grade found");
             }
@@ -78,19 +79,16 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Set<Grade> findAll() {
         Set<Grade> grades = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM notes");
+            PreparedStatement s = c.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+                            "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
+                            "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
+                            "FROM notes n" +
+                            "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
+                            "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO");
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                //blablablabla identity map
-                CompleteEvaluation eval = new CompleteEvaluationMapper().findById(rs.getInt("fk_comm"));
-                EvaluationCriteria crit = new EvaluationCriteriaMapper().findById(rs.getInt("fk_crit"));
-
-                grades.add(new Grade(
-                        rs.getInt("numero"),
-                        rs.getInt("note"),
-                        eval,
-                        crit
-                ));
+                //blablablabla identity map ????????????????????
+                grades.add(this.loadGrade(rs));
             }
             rs.close();
         } catch (SQLException e) {
