@@ -18,7 +18,11 @@ import java.util.Set;
 */
 
 public class GradeMapper extends AbstractMapper<Grade> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public GradeMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     private Grade loadGrade(ResultSet rs, CompleteEvaluation eval, EvaluationCriteria crit) throws SQLException {
         return new Grade(
@@ -54,7 +58,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Grade findById(int id) {
         Grade grade = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
                     "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
                     "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
                     "FROM notes n" +
@@ -79,7 +83,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Set<Grade> findAll() {
         Set<Grade> grades = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
                             "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
                             "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
                             "FROM notes n" +
@@ -100,7 +104,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Grade create(Grade grade) {
         try {
             String generatedColumns[] = {"numero"};
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO notes(note,fk_comm, fk_crit)" +
                             "VALUES (?, ?, ?)",
                     generatedColumns);
@@ -115,7 +119,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
                 logger.warn("Failed to insert grade into the table", grade.getGrade() + ". Continuing...");
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
@@ -125,7 +129,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public boolean update(Grade grade) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE notes"+
                     "SET note = ?, fk_comm = ?, fk_crit = ?"+
                     "WHERE numero = ?");
@@ -133,7 +137,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
             s.setInt(2, grade.getEvaluation().getId());
             s.setInt(3, grade.getCriteria().getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         }catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
@@ -145,11 +149,11 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try{
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE notes WHERE numero = ? ");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }

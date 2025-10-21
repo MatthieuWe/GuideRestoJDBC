@@ -14,6 +14,7 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
 
     protected static final Logger logger = LogManager.getLogger();
 
+
     public abstract T findById(int id);
     public abstract Set<T> findAll();
     public abstract T create(T object);
@@ -24,6 +25,8 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
     protected abstract String getSequenceQuery();
     protected abstract String getExistsQuery();
     protected abstract String getCountQuery();
+
+
 
     /**
      * Vérifie si un objet avec l'ID donné existe.

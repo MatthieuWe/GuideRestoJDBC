@@ -11,12 +11,16 @@ import java.sql.*;
 
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public RestaurantMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     public Restaurant findById(int id) {
         Restaurant resto = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+            PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
                     " t.numero num_type, t.libelle, t.description desc_type" +
                     " FROM restaurants r" +
@@ -41,7 +45,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Set<Restaurant> findForCity(City city) {
         Set<Restaurant> restos = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+            PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, t.numero num_type, t.libelle, t.description desc_type" +
                     " FROM restaurants r" +
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
@@ -60,7 +64,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Set<Restaurant> findForType(RestaurantType type) {
         Set<Restaurant> restos = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+            PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal" +
                     " FROM restaurants r" +
                     " INNER JOIN villes v ON r.fk_ville = v.numero" +
@@ -80,7 +84,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Set<Restaurant> findAll() {
         Set<Restaurant> restos = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+            PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
                     " t.numero num_type, t.libelle, t.description desc_type" +
                     " FROM restaurants r" +
@@ -139,7 +143,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Restaurant create(Restaurant resto) {
         try {
             String generatedColumns[] = { "numero" };
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO restaurants (nom, description, site_web, adresse, fk_type, fk_ville)" +
                             "VALUES (?, ?, ?, ?, ?, ?)",
                     generatedColumns);
@@ -157,7 +161,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 logger.warn("Failed to insert resto into the table: ", resto.getName() + ". Continuing..." );
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -166,7 +170,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public boolean update(Restaurant resto) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE restaurants"+
                             " SET nom = ?, description = ?, site_web = ?, adresse = ?, fk_type = ?, fk_ville = ?"+
                             " WHERE numero = ?");
@@ -178,7 +182,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             s.setInt(6, resto.getAddress().getCity().getId());
             s.setInt(7, resto.getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -190,24 +194,24 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE likes WHERE fk_rest = ?");
             s.setInt(1, id);
             s.executeUpdate();
-            s = c.prepareStatement(
+            s = connection.prepareStatement(
                     "DELETE notes WHERE fk_comm IN " +
                             "(SELECT numero FROM commentaires WHERE fk_rest = ?)");
             s.setInt(1, id);
             s.executeUpdate();
-            s = c.prepareStatement(
+            s = connection.prepareStatement(
                     "DELETE commentaires WHERE fk_rest = ?");
             s.setInt(1, id);
             s.executeUpdate();
-            s = c.prepareStatement(
+            s = connection.prepareStatement(
                     "DELETE restaurants WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
             e.printStackTrace();

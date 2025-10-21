@@ -7,12 +7,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
 
+    public EvaluationCriteriaMapper(Connection connection) {
+        this.connection = connection;
+    }
     public EvaluationCriteria findById(int id) {
         EvaluationCriteria criteria = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM CRITERES_EVALUATION WHERE id = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM CRITERES_EVALUATION WHERE id = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
@@ -35,7 +38,7 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     public Set<EvaluationCriteria> findAll() {
         Set<EvaluationCriteria> result = new HashSet<>();
         String sql = "SELECT * FROM CRITERES_EVALUATION";
-        try (PreparedStatement s = c.prepareStatement(sql);
+        try (PreparedStatement s = connection.prepareStatement(sql);
              ResultSet rs = s.executeQuery()) {
             while (rs.next()) {
                 result.add(mapRow(rs));
@@ -49,7 +52,7 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     @Override
     public EvaluationCriteria create(EvaluationCriteria object) {
         String sql = "INSERT INTO CRITERES_EVALUATION(numero, nom, description) VALUES(?, ?, ?)";
-        try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, object.getId());
             ps.setString(2, object.getName());
             ps.setString(3, object.getDescription());
@@ -70,7 +73,7 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     @Override
     public boolean update(EvaluationCriteria object) {
         String sql = "UPDATE CRITERES_EVALUATION SET numero = ?, nom = ?, description = ? WHERE id = ?";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, object.getId());
             ps.setString(2, object.getName());
             ps.setString(3, object.getDescription());
@@ -90,7 +93,7 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     @Override
     public boolean deleteById(int id) {
         String sql = "DELETE FROM CRITERES_EVALUATION WHERE id = ?";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {

@@ -42,13 +42,13 @@ public class Application {
             connection = ConnectionUtils.getConnection();
 
 
-            restaurantMapper = new RestaurantMapper();
-            typeMapper = new RestaurantTypeMapper();
-            cityMapper = new CityMapper();
-            criteriaMapper = new EvaluationCriteriaMapper();
-            basicEvaluationMapper = new BasicEvaluationMapper();
-            completeEvaluationMapper = new CompleteEvaluationMapper();
-            gradeMapper = new GradeMapper();
+            restaurantMapper = new RestaurantMapper(connection);
+            typeMapper = new RestaurantTypeMapper(connection);
+            cityMapper = new CityMapper(connection);
+            criteriaMapper = new EvaluationCriteriaMapper(connection);
+            basicEvaluationMapper = new BasicEvaluationMapper(connection);
+            completeEvaluationMapper = new CompleteEvaluationMapper(connection);
+            gradeMapper = new GradeMapper(connection);
 
             restaurants = new LinkedHashSet<>(restaurantMapper.findAll());
             types = new LinkedHashSet<>(typeMapper.findAll());
