@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.BasicEvaluation;
+import ch.hearc.ig.guideresto.business.Evaluation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 
 import java.sql.Connection;
@@ -45,6 +46,34 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             logger.error("SQLException:{}", e.getMessage());
         }
         return basicEvaluation;
+    }
+    public Set<Evaluation> findForRestaurant(Restaurant resto) {
+        Set<Evaluation> basicEvaluations = new HashSet<>();
+        try {
+            PreparedStatement s = c.prepareStatement("SELECT * FROM likes WHERE fk_rest = ?");
+            s.setInt(1, resto.getId());
+            ResultSet rs = s.executeQuery();
+
+            while (rs.next()) {
+                Boolean appreciation;
+                if ("T" == rs.getString("appreciation")) {
+                    appreciation=true;
+                } else {
+                    appreciation=false;
+                }
+                basicEvaluations.add(new BasicEvaluation(
+                        rs.getInt("numero"),
+                        rs.getDate("date_eval"),
+                        resto,
+                        appreciation,
+                        rs.getString("adresse_ip")
+                ));
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException:{}", e.getMessage());
+        }
+        return basicEvaluations;
     }
 
     @Override

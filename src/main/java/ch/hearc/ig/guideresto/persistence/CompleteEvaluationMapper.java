@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.CompleteEvaluation;
+import ch.hearc.ig.guideresto.business.Evaluation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 
 import java.sql.*;
@@ -34,7 +35,26 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         }
         return completeEvaluation;
     }
-
+    public Set<Evaluation> findForRestaurant(Restaurant resto) {
+        Set<Evaluation> completeEvaluations = new HashSet<>();
+        try {
+            PreparedStatement s = c.prepareStatement("SELECT * FROM commentaires WHERE fk_rest = ?");
+            s.setInt(1, resto.getId());
+            ResultSet rs = s.executeQuery();
+            while(rs.next()) {
+                completeEvaluations.add(new CompleteEvaluation(
+                        rs.getDate("date_eval"),
+                        resto,
+                        rs.getString("commentaire"),
+                        rs.getString("nom_utilisateur")
+                ));
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return completeEvaluations;
+    }
     public Set<CompleteEvaluation> findAll() {
         Set<CompleteEvaluation> completeEvaluations = new HashSet<>();
         try {

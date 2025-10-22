@@ -1,5 +1,8 @@
 package ch.hearc.ig.guideresto.business;
 
+import ch.hearc.ig.guideresto.persistence.BasicEvaluationMapper;
+import ch.hearc.ig.guideresto.persistence.CompleteEvaluationMapper;
+import ch.hearc.ig.guideresto.persistence.RestaurantMapper;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.HashSet;
@@ -31,7 +34,7 @@ public class Restaurant implements IBusinessObject {
         this.name = name;
         this.description = description;
         this.website = website;
-        this.evaluations = new HashSet();
+        this.evaluations = null;
         this.address = new Localisation(street, city);
         this.type = type;
     }
@@ -41,7 +44,7 @@ public class Restaurant implements IBusinessObject {
         this.name = name;
         this.description = description;
         this.website = website;
-        this.evaluations = new HashSet();
+        this.evaluations = null;
         this.address = address;
         this.type = type;
     }
@@ -79,6 +82,12 @@ public class Restaurant implements IBusinessObject {
     }
 
     public Set<Evaluation> getEvaluations() {
+        if (evaluations == null) {
+            BasicEvaluationMapper basicEvaluationMapper = new BasicEvaluationMapper();
+            evaluations = basicEvaluationMapper.findForRestaurant(this);
+            CompleteEvaluationMapper CompleteEvaluationMapper = new CompleteEvaluationMapper();
+            evaluations.addAll(CompleteEvaluationMapper.findForRestaurant(this));
+        }
         return evaluations;
     }
 
