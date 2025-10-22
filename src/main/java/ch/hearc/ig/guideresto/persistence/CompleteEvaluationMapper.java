@@ -23,7 +23,6 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             ResultSet rs = s.executeQuery();
             if(rs.next()) {
                 completeEvaluation = new CompleteEvaluation(
-                        //est-ce que j'ai besoin du numero ?? ou bien pas ??
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
                         (Restaurant) rs.getObject("restaurant"), //à tester mdrrr

@@ -26,7 +26,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     " FROM restaurants r" +
                     " INNER JOIN villes v ON r.fk_ville = v.numero" +
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
-                    " WHERE numero = ?");
+                    " WHERE num_resto = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 

@@ -64,7 +64,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
                     "FROM notes n" +
                     "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
                     "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
-                    "WHERE id = ?");
+                    "WHERE numeroNote = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
@@ -163,5 +163,28 @@ public class GradeMapper extends AbstractMapper<Grade> {
     protected String getSequenceQuery() {return "SELECT seq_notes.NextVal FROM dual";}
     protected String getExistsQuery() {return "SELECT numero FROM notes WHERE numero = ? ";}
     protected String getCountQuery() {return "SELECT count(*) FROM notes";}
+
+    public Set<Grade> findForCompleteEvaluation(int id) {
+        Set<Grade> grades = new HashSet<>();
+        try {
+            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+                    "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
+                    "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
+                    "FROM notes n" +
+                    "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
+                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
+                    "WHERE numCom = ?");
+            s.setInt(1, id);
+            ResultSet rs = s.executeQuery();
+            while (rs.next()) {
+                grades.add(this.loadGrade(rs));
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException: " + e.getMessage());
+        }
+        return grades;
+
+    }
 
 }
