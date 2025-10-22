@@ -26,6 +26,7 @@ public class Localisation {
     }
 
     public City getCity() {
+        //eager loading ici se fait automatiquement
         return city;
     }
 
