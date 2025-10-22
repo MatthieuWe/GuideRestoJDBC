@@ -42,7 +42,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public Set<Evaluation> findForRestaurant(Restaurant resto) {
         Set<Evaluation> completeEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM commentaires WHERE fk_rest = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM commentaires WHERE fk_rest = ?");
             s.setInt(1, resto.getId());
             ResultSet rs = s.executeQuery();
             while(rs.next()) {

@@ -54,7 +54,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public Set<Evaluation> findForRestaurant(Restaurant resto) {
         Set<Evaluation> basicEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM likes WHERE fk_rest = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM likes WHERE fk_rest = ?");
             s.setInt(1, resto.getId());
             ResultSet rs = s.executeQuery();
 
