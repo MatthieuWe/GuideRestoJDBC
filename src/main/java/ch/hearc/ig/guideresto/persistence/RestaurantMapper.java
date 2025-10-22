@@ -5,13 +5,16 @@ import ch.hearc.ig.guideresto.business.Localisation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.business.RestaurantType;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.sql.*;
 
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     private final Connection connection;
+    private Map<Long, Restaurant> cache = new HashMap<>(); //identity map :)
 
     public RestaurantMapper(Connection connection) {
         this.connection = connection;
@@ -19,6 +22,9 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     public Restaurant findById(int id) {
         Restaurant resto = null;
+        if (cache.containsKey(id)) { //identity map ici 😬😬😬😬😬😬
+            return cache.get(id);
+        }
         try {
             PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
@@ -92,13 +98,59 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                restos.add(this.loadRestaurant(rs));
+                Restaurant resto = addToCache(rs); //j'ai fait comme ça je sais pas si c'est juste, c'est juste que s'il y a rien et je le mets dans la liste ça va merder
+                if (resto != null) {
+                    restos.add(resto);
+                }
             }
             rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
         return restos;
+    }
+
+    private Restaurant addToCache(ResultSet rs){
+        int pk = 0;
+        try {
+            pk = rs.getInt(1); //l'id es tle premier retourné dans la requête SQL donc on est OKAY
+            if (!this.cache.containsKey(pk)) {
+                City city = new City(rs.getInt("num_ville"),
+                        rs.getString("code_postal"),
+                        rs.getString("nom_ville"));
+                /*Je pense qu'à terme il faudra changer ces créations pour utiliser des mappers également,
+                parce que sinon, rien me dit que la ville n'existe pas déjà. donc je dois passer par le mapper qui
+                est celui qui gère le cache des villes
+                pareil pour les types de restau
+                et après force à nous pour les localisations, je veux même pas savoir
+                 */
+                //city = new CityMapper(connection).create(city);
+                Localisation address = new Localisation(rs.getString("adresse"), city);
+
+                RestaurantType type = new RestaurantType(rs.getInt("num_type"),
+                        rs.getString("libelle"),
+                        rs.getString("desc_type"));
+
+
+
+                Restaurant resto = new Restaurant(
+                        rs.getInt("num_resto"),
+                        rs.getString("nom"),
+                        rs.getString("desc_resto"),
+                        rs.getString("site_web"),
+                        address,
+                        type);
+                this.cache.put((long) pk, resto);
+            }
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return this.cache.get(pk);
+
+    }
+
+    public void clearCache(){
+        cache.clear();
     }
     /*
     Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
@@ -157,13 +209,16 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 resto.setId(rs.getInt(1));
+                //identity map : Mise à jour du cache
+                this.cache.put((long) resto.getId(), resto);
             } else {
                 logger.warn("Failed to insert resto into the table: ", resto.getName() + ". Continuing..." );
             }
             rs.close();
             connection.commit();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
+        } catch (SQLException | RuntimeException e) {
+            //mettre un rollback ici ?  j'ai pas réussi
+            logger.error("SQLException or runtimeexcption: {}", e.getMessage());
         }
         return resto;
     }
@@ -198,19 +253,27 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     "DELETE likes WHERE fk_rest = ?");
             s.setInt(1, id);
             s.executeUpdate();
+
             s = connection.prepareStatement(
                     "DELETE notes WHERE fk_comm IN " +
                             "(SELECT numero FROM commentaires WHERE fk_rest = ?)");
             s.setInt(1, id);
             s.executeUpdate();
+
             s = connection.prepareStatement(
                     "DELETE commentaires WHERE fk_rest = ?");
             s.setInt(1, id);
             s.executeUpdate();
+
             s = connection.prepareStatement(
                     "DELETE restaurants WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
+
+            this.cache.remove(id); // mise à jour du cache
+            //peut-être qu'il faut aussi passer par les mappers pour les autres ....
+            //comme ça le cache est aussi géré de leur coté......
+
             connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
