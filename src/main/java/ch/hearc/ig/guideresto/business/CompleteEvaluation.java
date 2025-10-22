@@ -4,8 +4,10 @@ package ch.hearc.ig.guideresto.business;
  * @author cedric.baudet
  */
 
+import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 import ch.hearc.ig.guideresto.persistence.GradeMapper;
 
+import java.sql.Connection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -49,7 +51,8 @@ public class CompleteEvaluation extends Evaluation {
 
     public Set<Grade> getGrades() {
         if (this.grades == null) {
-            GradeMapper gradesMapper = new GradeMapper();
+            Connection connection = ConnectionUtils.getConnection();
+            GradeMapper gradesMapper = new GradeMapper(connection);
             this.grades = gradesMapper.findAll();
         }
         return this.grades;

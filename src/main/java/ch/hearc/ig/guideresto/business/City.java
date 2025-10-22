@@ -1,7 +1,9 @@
 package ch.hearc.ig.guideresto.business;
 
+import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 import ch.hearc.ig.guideresto.persistence.RestaurantMapper;
 
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -58,7 +60,8 @@ public class City implements IBusinessObject {
 
     public Set<Restaurant> getRestaurants() {
         if (restaurants == null) {
-            RestaurantMapper restaurantMapper = new RestaurantMapper();
+            Connection connection = ConnectionUtils.getConnection();
+            RestaurantMapper restaurantMapper = new RestaurantMapper(connection);
             restaurants = restaurantMapper.findForCity(this);
         }
         return restaurants;

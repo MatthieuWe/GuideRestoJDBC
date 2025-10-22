@@ -2,9 +2,11 @@ package ch.hearc.ig.guideresto.business;
 
 import ch.hearc.ig.guideresto.persistence.BasicEvaluationMapper;
 import ch.hearc.ig.guideresto.persistence.CompleteEvaluationMapper;
+import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 import ch.hearc.ig.guideresto.persistence.RestaurantMapper;
 import org.apache.commons.collections4.CollectionUtils;
 
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -83,9 +85,10 @@ public class Restaurant implements IBusinessObject {
 
     public Set<Evaluation> getEvaluations() {
         if (evaluations == null) {
-            BasicEvaluationMapper basicEvaluationMapper = new BasicEvaluationMapper();
+            Connection connection = ConnectionUtils.getConnection();
+            BasicEvaluationMapper basicEvaluationMapper = new BasicEvaluationMapper(connection);
             evaluations = basicEvaluationMapper.findForRestaurant(this);
-            CompleteEvaluationMapper CompleteEvaluationMapper = new CompleteEvaluationMapper();
+            CompleteEvaluationMapper CompleteEvaluationMapper = new CompleteEvaluationMapper(connection);
             evaluations.addAll(CompleteEvaluationMapper.findForRestaurant(this));
         }
         return evaluations;
