@@ -42,6 +42,7 @@ public class Grade implements IBusinessObject {
     }
 
     public CompleteEvaluation getEvaluation() {
+        //ici c'est eager aussi
         return evaluation;
     }
 
@@ -50,6 +51,7 @@ public class Grade implements IBusinessObject {
     }
 
     public EvaluationCriteria getCriteria() {
+        //ici c'est déjà eager aussi
         return criteria;
     }
 

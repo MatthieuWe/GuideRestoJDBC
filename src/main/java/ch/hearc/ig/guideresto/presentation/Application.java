@@ -110,8 +110,7 @@ public class Application {
                 addNewRestaurant();
                 break;
             case 0:
-                System.out.println("Au revoir !");
-                connection.isClosed(); //@sila à faire espè¨ce de conne + enlever toutes les connexions desy mappers + faire singleton
+                printEasterEgg();
                 break;
             default:
                 System.out.println("Erreur : saisie incorrecte. Veuillez réessayer");
@@ -603,6 +602,23 @@ public class Application {
         return null;
     }
 
+    private static void printEasterEgg() {
+        System.out.println("                                 .       .");
+        System.out.println("                                / `.   .' \\");
+        System.out.println("                        .---.  <    > <    >  .---.");
+        System.out.println("                        |    \\  \\ - ~ ~ - /  /    |");
+        System.out.println("                         ~-..-~             ~-..-~");
+        System.out.println("Au revoir !         \\~~~\\.'                    `./~~~/");
+        System.out.println("  \\ |     .-~~^-.    \\__/                        \\__/");
+        System.out.println("   \\|   .'  O    \\     /               /       \\  \\");
+        System.out.println("       (_____,    `._.'               |         }  \\/~~~/");
+        System.out.println("        `----.          /       }     |        /    \\__/");
+        System.out.println("              `-.      |       /      |       /      `. ,~~|");
+        System.out.println("                  ~-.__|      /_ - ~ ^|      /- _      `..-'   f: f:");
+        System.out.println("                       |     /        |     /     ~-.     `-. _||_||_");
+        System.out.println("                       |_____|        |_____|         ~ - . _ _ _ _ _>");
+        System.out.println("                          credits: Stegosaurus by Michael John Wagoner");
+    }
     /**
      * readInt ne repositionne pas le scanner au début d'une ligne donc il faut le faire manuellement sinon
      * des problèmes apparaissent quand on demande à l'utilisateur de saisir une chaîne de caractères.

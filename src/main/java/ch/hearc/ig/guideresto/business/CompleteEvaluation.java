@@ -4,6 +4,8 @@ package ch.hearc.ig.guideresto.business;
  * @author cedric.baudet
  */
 
+import ch.hearc.ig.guideresto.persistence.GradeMapper;
+
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -46,7 +48,11 @@ public class CompleteEvaluation extends Evaluation {
     }
 
     public Set<Grade> getGrades() {
-        return grades;
+        if (this.grades == null) {
+            GradeMapper gradesMapper = new GradeMapper();
+            this.grades = gradesMapper.findAll();
+        }
+        return this.grades;
     }
 
     public void setGrades(Set<Grade> grades) {
