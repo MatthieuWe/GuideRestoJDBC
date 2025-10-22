@@ -2,19 +2,39 @@ package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.RestaurantType;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.sql.*;
 
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
-    // est-ce que c'est OK de la mettre ici?
     private final Connection connection;
+    private Map<Long, RestaurantType> cache = new HashMap<>();
 
     public RestaurantTypeMapper(Connection connection) {
         this.connection = connection;
     }
 
+    private RestaurantType addToCache(ResultSet rs) throws SQLException {
+        int id = rs.getInt("numero");
+
+        if (!cache.containsKey((long) id)) {
+            RestaurantType type = new RestaurantType(
+                    id,
+                    rs.getString("libelle"),
+                    rs.getString("description")
+            );
+            cache.put((long) id, type);
+        }
+
+        return cache.get((long) id);
+    }
+
     public RestaurantType findById(int id) {
+        if (cache.containsKey((long)id)) {
+            return cache.get((long) id);
+        }
         RestaurantType type = null;
         try {
             PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
@@ -23,11 +43,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             // recherche sur la clé primaire donc max 1 resultat
             // sinon on remplirait une List avec une boucle while
             if(rs.next()) {
-                type = new RestaurantType(
-                        rs.getInt("numero"),
-                        rs.getString("libelle"),
-                        rs.getString("description")
-                );
+                type = addToCache(rs);
             } else {
                 logger.error("No such restaurant type");
             }
@@ -91,6 +107,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 type.setId(rs.getInt(1));
+                cache.put((long) type.getId(), type); //identity map here 😬😬😬😬
             } else {
                 logger.warn("Failed to insert type into the table: ", type.getLabel() + ". Continuing..." );
             }
@@ -108,6 +125,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         }
         return type;
     }
+
     public boolean update(RestaurantType type) {
         int affectedRows = 0;
         try {
@@ -133,6 +151,9 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                     "DELETE types_gastronomiques WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
+            if (affectedRows > 0) {//cache !!!
+                cache.remove((long) id);
+            }
             connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
@@ -148,6 +169,10 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     }
     protected String getCountQuery() {
         return "SELECT Count(*) FROM types_gastronomiques";
+    }
+
+    public void clearCache(){
+        cache.clear();
     }
 
 }
