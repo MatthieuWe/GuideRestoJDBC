@@ -59,7 +59,7 @@ public class City implements IBusinessObject {
     }
 
     public Set<Restaurant> getRestaurants() {
-        if (restaurants == null) {
+        if (restaurants == null) { //lazy loader
             Connection connection = ConnectionUtils.getConnection();
             RestaurantMapper restaurantMapper = new RestaurantMapper(connection);
             restaurants = restaurantMapper.findForCity(this);

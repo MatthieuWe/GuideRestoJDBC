@@ -84,7 +84,7 @@ public class Restaurant implements IBusinessObject {
     }
 
     public Set<Evaluation> getEvaluations() {
-        if (evaluations == null) {
+        if (evaluations == null) { //lazy loader
             Connection connection = ConnectionUtils.getConnection();
             BasicEvaluationMapper basicEvaluationMapper = new BasicEvaluationMapper(connection);
             evaluations = basicEvaluationMapper.findForRestaurant(this);
