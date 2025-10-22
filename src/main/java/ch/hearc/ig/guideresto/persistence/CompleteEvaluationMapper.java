@@ -9,12 +9,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public CompleteEvaluationMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     public CompleteEvaluation findById(int id) {
         CompleteEvaluation completeEvaluation = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM commentaires WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM commentaires WHERE numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
             if(rs.next()) {
@@ -58,7 +62,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public Set<CompleteEvaluation> findAll() {
         Set<CompleteEvaluation> completeEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM commentaires");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM commentaires");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 completeEvaluations.add(new CompleteEvaluation(
@@ -77,7 +81,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public CompleteEvaluation create(CompleteEvaluation completeEvaluation) {
         try {
             String generatedColumns[] = { "numero" };
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO commentaires (date_eval, commentaire, nom_utilisateur)" +
                             "VALUES (?, ?, ?)",
                     generatedColumns);
@@ -92,7 +96,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
                 logger.warn("Failed to insert comment into the table: ", completeEvaluation.getVisitDate() + ". Continuing..." );
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -101,7 +105,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public boolean update(CompleteEvaluation completeEvaluation) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE commentaires"+
                             "SET date_eval = ?, commentaire = ?, nom_utilisateur = ?, fk_rest = ? "
                     +"WHERE numero = ?");
@@ -112,7 +116,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             s.setInt(1, completeEvaluation.getId());
 
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -124,11 +128,11 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE commentaires WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }

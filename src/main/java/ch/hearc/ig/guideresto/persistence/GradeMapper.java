@@ -18,26 +18,58 @@ import java.util.Set;
 */
 
 public class GradeMapper extends AbstractMapper<Grade> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public GradeMapper(Connection connection) {
+        this.connection = connection;
+    }
+
+    private Grade loadGrade(ResultSet rs, CompleteEvaluation eval, EvaluationCriteria crit) throws SQLException {
+        return new Grade(
+                rs.getInt("numero"),
+                rs.getInt("note"),
+                eval,
+                crit
+        );
+    }
+    private Grade loadGrade(ResultSet rs) throws SQLException {
+        CompleteEvaluation eval = new CompleteEvaluation(rs.getInt("NumeroCE"),
+                null, //voir comment mettre une date plus tard
+                null, //restaurant to be implemented later
+                rs.getString("nomCe"),
+                rs.getString("descriptionCe"));
+
+
+        EvaluationCriteria crit = new EvaluationCriteria(
+                rs.getInt("numCom"),
+                rs.getString("nomCom"),
+                rs.getString("descriptionCom")
+        );
+
+        return new Grade(
+                rs.getInt("numero"),
+                rs.getInt("note"),
+                eval,
+                crit
+        );
+    }
 
     @Override
     public Grade findById(int id) {
         Grade grade = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * value FROM notes WHERE id = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+                    "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
+                    "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
+                    "FROM notes n" +
+                    "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
+                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
+                    "WHERE id = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
             if(rs.next()) {
-                CompleteEvaluation eval = new CompleteEvaluationMapper().findById(rs.getInt("fk_comm"));
-                EvaluationCriteria crit = new EvaluationCriteriaMapper().findById(rs.getInt("fk_crit"));
-
-                grade = new Grade(
-                        rs.getInt("numero"),
-                        rs.getInt("note"),
-                        eval,
-                        crit
-                ); //criteria to be implemented later
+                grade = this.loadGrade(rs);
             } else {
                 logger.error("No grade found");
             }
@@ -51,19 +83,16 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Set<Grade> findAll() {
         Set<Grade> grades = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM notes");
+            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
+                            "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
+                            "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
+                            "FROM notes n" +
+                            "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
+                            "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO");
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                //blablablabla identity map
-                CompleteEvaluation eval = new CompleteEvaluationMapper().findById(rs.getInt("fk_comm"));
-                EvaluationCriteria crit = new EvaluationCriteriaMapper().findById(rs.getInt("fk_crit"));
-
-                grades.add(new Grade(
-                        rs.getInt("numero"),
-                        rs.getInt("note"),
-                        eval,
-                        crit
-                ));
+                //blablablabla identity map ????????????????????
+                grades.add(this.loadGrade(rs));
             }
             rs.close();
         } catch (SQLException e) {
@@ -75,7 +104,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Grade create(Grade grade) {
         try {
             String generatedColumns[] = {"numero"};
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO notes(note,fk_comm, fk_crit)" +
                             "VALUES (?, ?, ?)",
                     generatedColumns);
@@ -90,7 +119,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
                 logger.warn("Failed to insert grade into the table", grade.getGrade() + ". Continuing...");
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
@@ -100,7 +129,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public boolean update(Grade grade) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE notes"+
                     "SET note = ?, fk_comm = ?, fk_crit = ?"+
                     "WHERE numero = ?");
@@ -108,7 +137,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
             s.setInt(2, grade.getEvaluation().getId());
             s.setInt(3, grade.getCriteria().getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         }catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
@@ -120,11 +149,11 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try{
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE notes WHERE numero = ? ");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }

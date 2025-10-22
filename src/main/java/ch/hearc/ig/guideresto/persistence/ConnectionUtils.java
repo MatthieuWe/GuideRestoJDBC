@@ -11,49 +11,62 @@ import java.util.ResourceBundle;
 
 /**
  * Provide helper methods to deal with database connections.
- * Ideally, this should also manage connection pools in a bigger application.
+ * Ideally, this should also manage instance pools in a bigger application.
  *
  * @author arnaud.geiser
  * @author alain.matile
  */
-public class ConnectionUtils {
+public final class ConnectionUtils {
 
     private static final Logger logger = LogManager.getLogger();
+    private static Connection instance;
 
-    //note Sila pour la compréhension : c'est un Singleton parce que c'est un static. Il va être fait une fois et réutilisé systématiquement en fait.
-    private static Connection connection;
+    //constructeur privé pour le singleton
+    private ConnectionUtils() {
+        throw new AssertionError("Static class - cannot be instantiated");
+    }
 
     public static Connection getConnection() {
         try {
-            // Load database credentials from resources/database.properties
-            ResourceBundle dbProps = ResourceBundle.getBundle("database");
-            String url = dbProps.getString("database.url");
-            String username = dbProps.getString("database.username");
-            String password = dbProps.getString("database.password");
+            if (instance == null || instance.isClosed()) { // lazy initialisation
+                synchronized (ConnectionUtils.class) {
+                    if (instance != null && !instance.isClosed()) { //double check
+                        try {
+                            // Load database credentials from resources/database.properties
+                            ResourceBundle dbProps = ResourceBundle.getBundle("database");
+                            String url = dbProps.getString("database.url");
+                            String username = dbProps.getString("database.username");
+                            String password = dbProps.getString("database.password");
 
-            logger.info("Trying to connect to user schema '{}' with JDBC string '{}'", username, url);
+                            logger.info("Trying to connect to user schema '{}' with JDBC string '{}'", username, url);
 
-            // Initialize a connection if required
-            if (ConnectionUtils.connection == null || ConnectionUtils.connection.isClosed()) {
-                Connection connection = DriverManager.getConnection(url, username, password);
-                connection.setAutoCommit(false);
-                ConnectionUtils.connection = connection;
-            }
-        } catch (SQLException ex) {
-            logger.error(ex.getMessage(), ex);
-        } catch (MissingResourceException ex) {
-            logger.error(ex.getMessage(), ex);
-        }
-        return ConnectionUtils.connection;
-    }
+                            Connection connection = DriverManager.getConnection(url, username, password);
+                            connection.setAutoCommit(false);
+                            ConnectionUtils.instance = connection; //put into a static class
+                        } catch (SQLException | MissingResourceException e) {
+                            logger.error(e.getMessage());
+                        }
+                    }
 
-    public static void closeConnection() {
-        try {
-            if (ConnectionUtils.connection != null && !ConnectionUtils.connection.isClosed()) {
-                ConnectionUtils.connection.close();
+                }
             }
         } catch (SQLException e) {
             logger.error(e.getMessage(), e);
         }
+        return instance; //return the instance
+    }
+
+    public static void closeConnection() {
+        synchronized (ConnectionUtils.class) {
+            try {
+                if (instance != null && !instance.isClosed()) {
+                    instance.close();
+                    instance = null;
+                }
+            } catch (SQLException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
     }
 }
+

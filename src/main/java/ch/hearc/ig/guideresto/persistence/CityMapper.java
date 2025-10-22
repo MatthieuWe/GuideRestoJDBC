@@ -7,12 +7,16 @@ import java.util.Set;
 import java.sql.*;
 
 public class CityMapper extends AbstractMapper<City> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public CityMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     public City findById(int id) {
         City city = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM villes WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
             if(rs.next()) {
@@ -34,7 +38,7 @@ public class CityMapper extends AbstractMapper<City> {
     public Set<City> findAll() {
         Set<City> cities = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM villes");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM villes");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 cities.add(new City(
@@ -52,7 +56,7 @@ public class CityMapper extends AbstractMapper<City> {
     public City create(City city) {
         try {
             String generatedColumns[] = { "numero" };
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO villes (code_postal, nom_ville)" +
                             "VALUES (?, ?)",
                     generatedColumns);
@@ -66,7 +70,7 @@ public class CityMapper extends AbstractMapper<City> {
                 logger.warn("Failed to insert city into the table: ", city.getCityName() + ". Continuing..." );
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -75,13 +79,13 @@ public class CityMapper extends AbstractMapper<City> {
     public boolean update(City city) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE villes SET code_postal = ?, nom_ville = ? WHERE numero = ?");
             s.setString(1, city.getZipCode());
             s.setString(2, city.getCityName());
             s.setInt(3, city.getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -93,11 +97,11 @@ public class CityMapper extends AbstractMapper<City> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE villes WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }

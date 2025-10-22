@@ -7,6 +7,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -17,6 +19,7 @@ public class Application {
 
     private static Scanner scanner;
     private static final Logger logger = LogManager.getLogger(Application.class);
+    private static Connection connection;
 
     private static RestaurantMapper restaurantMapper;
     private static RestaurantTypeMapper typeMapper;
@@ -35,28 +38,40 @@ public class Application {
     public static void main(String[] args) {
         scanner = new Scanner(System.in);
 
-        restaurantMapper = new RestaurantMapper();
-        typeMapper = new RestaurantTypeMapper();
-        cityMapper = new CityMapper();
-        criteriaMapper = new EvaluationCriteriaMapper();
-        basicEvaluationMapper = new BasicEvaluationMapper();
-        completeEvaluationMapper = new CompleteEvaluationMapper();
-        gradeMapper = new GradeMapper();
-
-        restaurants = new LinkedHashSet<>(restaurantMapper.findAll());
-        types = new LinkedHashSet<>(typeMapper.findAll());
-        cities = new LinkedHashSet<>(cityMapper.findAll());
-        criterias = new LinkedHashSet<>(criteriaMapper.findAll());
+        try {
+            connection = ConnectionUtils.getConnection();
 
 
-        System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
-        int choice;
-        do {
-            printMainMenu();
-            choice = readInt();
-            proceedMainMenu(choice);
-        } while (choice != 0);
+            restaurantMapper = new RestaurantMapper(connection);
+            typeMapper = new RestaurantTypeMapper(connection);
+            cityMapper = new CityMapper(connection);
+            criteriaMapper = new EvaluationCriteriaMapper(connection);
+            basicEvaluationMapper = new BasicEvaluationMapper(connection);
+            completeEvaluationMapper = new CompleteEvaluationMapper(connection);
+            gradeMapper = new GradeMapper(connection);
+
+            restaurants = new LinkedHashSet<>(restaurantMapper.findAll());
+            types = new LinkedHashSet<>(typeMapper.findAll());
+            cities = new LinkedHashSet<>(cityMapper.findAll());
+            criterias = new LinkedHashSet<>(criteriaMapper.findAll());
+
+
+            System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
+            int choice;
+            do {
+                printMainMenu();
+                choice = readInt();
+                proceedMainMenu(choice);
+            } while (choice != 0);
+        } catch (Exception e) {
+            logger.error("An error occurred while connecting to the database: {}", e.getMessage());
+        } finally {
+            if (connection != null) {
+                ConnectionUtils.closeConnection();
+            }
+        }
     }
+
 
     /**
      * Affichage du menu principal de l'application
@@ -77,7 +92,7 @@ public class Application {
      *
      * @param choice Un nombre entre 0 et 5.
      */
-    private static void proceedMainMenu(int choice) {
+    private static void proceedMainMenu(int choice) throws SQLException {
         switch (choice) {
             case 1:
                 showRestaurantsList();
@@ -96,6 +111,7 @@ public class Application {
                 break;
             case 0:
                 System.out.println("Au revoir !");
+                connection.isClosed(); //@sila à faire espè¨ce de conne + enlever toutes les connexions desy mappers + faire singleton
                 break;
             default:
                 System.out.println("Erreur : saisie incorrecte. Veuillez réessayer");

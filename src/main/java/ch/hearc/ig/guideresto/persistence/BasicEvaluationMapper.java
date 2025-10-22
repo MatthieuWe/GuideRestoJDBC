@@ -12,13 +12,17 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection ;
+
+    public BasicEvaluationMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     @Override
     public BasicEvaluation findById(int id) {
         BasicEvaluation basicEvaluation = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM likes WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM likes WHERE numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
@@ -30,7 +34,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             }
 
             if (rs.next()) {
-                Restaurant restaurant = new RestaurantMapper().findById(rs.getInt("fk_rest"));
+                Restaurant restaurant = new RestaurantMapper(connection).findById(rs.getInt("fk_rest"));
                 basicEvaluation = new BasicEvaluation(
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
@@ -80,11 +84,11 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public Set<BasicEvaluation> findAll() {
         Set<BasicEvaluation> basicEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM likes");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM likes");
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
                 //beep boop identity map ???
-                Restaurant restaurant = new RestaurantMapper().findById(rs.getInt("fk_rest"));
+                Restaurant restaurant = new RestaurantMapper(connection).findById(rs.getInt("fk_rest"));
 
                 Boolean appreciation;
                 if ("T" == rs.getString("appreciation")) {
@@ -112,7 +116,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public BasicEvaluation create(BasicEvaluation basicEvaluation) {
         try {
             String generatedColumns[] = {"numero"};
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO likes (date_eval, fk_rest, appreciation, adresse_ip)" +
                             "VALUES (?, ?, ?, ?)",
                     generatedColumns);
@@ -129,7 +133,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
                 logger.warn("Failed to insert basic evaluation into the table : ");
             }
             rs.close();
-            c.commit(); //ne pas oublier les commits sinon... ça s'efface!!
+            connection.commit(); //ne pas oublier les commits sinon... ça s'efface!!
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -140,18 +144,18 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public boolean update(BasicEvaluation basicEvaluation) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE likes" +
                             " SET date_eval = ?, fk_rest = ?, appreciation = ?, adresse_ip = ?" +
                             " WHERE numero = ?");
             s.setDate(1, new java.sql.Date(basicEvaluation.getVisitDate().getTime()));
             s.setInt(2, basicEvaluation.getRestaurant().getId());
 
-            s.setString(3, basicEvaluation.getLikeRestaurant() ? "T" : "F"); //ew ew ew ew j'aime pas quand c'est écrit comme ça 🤮🤮🤮🤮
+            s.setString(3, basicEvaluation.getLikeRestaurant() ? "T" : "F"); //ew ew ew ew j'aime pas quand connection'est écrit comme ça 🤮🤮🤮🤮
             s.setString(4, basicEvaluation.getIpAddress());
             s.setInt(5, basicEvaluation.getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -167,11 +171,11 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE FROM likes WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }

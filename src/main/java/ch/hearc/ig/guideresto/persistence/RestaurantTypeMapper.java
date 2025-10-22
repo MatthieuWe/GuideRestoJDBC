@@ -8,12 +8,16 @@ import java.sql.*;
 
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     // est-ce que c'est OK de la mettre ici?
-    private Connection c = ConnectionUtils.getConnection();
+    private final Connection connection;
+
+    public RestaurantTypeMapper(Connection connection) {
+        this.connection = connection;
+    }
 
     public RestaurantType findById(int id) {
         RestaurantType type = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
             // recherche sur la clé primaire donc max 1 resultat
@@ -36,7 +40,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public RestaurantType findByLabel(String label) {
         RestaurantType type = null;
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM types_gastronomiques WHERE libelle = ?");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques WHERE libelle = ?");
             s.setString(1, label);
             ResultSet rs = s.executeQuery();
             // le libelle est une colonne a contrainte unique
@@ -59,7 +63,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public Set<RestaurantType> findAll() {
         Set<RestaurantType> types = new HashSet<>();
         try {
-            PreparedStatement s = c.prepareStatement("SELECT * FROM types_gastronomiques");
+            PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 types.add(new RestaurantType(
@@ -77,7 +81,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public RestaurantType create(RestaurantType type) {
         try {
             String generatedColumns[] = { "numero" };
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "INSERT INTO types_gastronomiques (libelle, description)" +
                     "VALUES (?, ?)",
                     generatedColumns);
@@ -91,7 +95,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                 logger.warn("Failed to insert type into the table: ", type.getLabel() + ". Continuing..." );
             }
             rs.close();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) {
                 // le type existe deja: violation de contrainte unique sur le libelle
@@ -107,13 +111,13 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public boolean update(RestaurantType type) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "UPDATE types_gastronomiques SET libelle = ?, description = ? WHERE numero = ?");
             s.setString(1, type.getLabel());
             s.setString(2, type.getDescription());
             s.setInt(3, type.getId());
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -125,11 +129,11 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public boolean deleteById(int id) {
         int affectedRows = 0;
         try {
-            PreparedStatement s = c.prepareStatement(
+            PreparedStatement s = connection.prepareStatement(
                     "DELETE types_gastronomiques WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            c.commit();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
