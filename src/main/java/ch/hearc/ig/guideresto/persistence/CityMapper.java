@@ -1,67 +1,48 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.City;
-import ch.hearc.ig.guideresto.business.RestaurantType;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.sql.*;
 
 public class CityMapper extends AbstractMapper<City> {
     private final Connection connection;
-    private Map<Long, City> cache = new HashMap<>();
 
 
     public CityMapper(Connection connection) {
         this.connection = connection;
     }
-    public void resetCache(){
-        cache.clear();
-    }
-
-    private void addToCache(City city) throws SQLException {
-        long id = city.getId();
-        if (!cache.containsKey((long) id)) {
-            cache.put((long) id, city);
-        }
-    }
-
-    private void removeFromCache(int id) throws SQLException {
-        if (!cache.containsKey((long) id)) {
-            City city = cache.get((long) id);
-            cache.remove((long) id, city);
-        }
-    }
 
     public City findById(int id) {
-        if (cache.containsKey((long) id)) {
-            return cache.get((long) id);
-        }
-        City city = null;
-        try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
-            if(rs.next()) {
-                city = new City(
-                        rs.getInt("numero"),
-                        rs.getString("code_postal"),
-                        rs.getString("nom_ville")
-                );
-            } else {
-                logger.error("No such city");
+        if (super.cache.containsKey(id)) {
+            return (City) super.cache.get(id);
+        } else {
+            City city = null;
+            try {
+                PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
+                if(rs.next()) {
+                    city = new City(
+                            rs.getInt("numero"),
+                            rs.getString("code_postal"),
+                            rs.getString("nom_ville")
+                    );
+                } else {
+                    logger.error("No such city");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: {}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
+            return city;
         }
-        return city;
     }
 
     public Set<City> findAll() {
         Set<City> cities = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement("SELECT * FROM villes");
             ResultSet rs = s.executeQuery();
@@ -72,7 +53,7 @@ public class CityMapper extends AbstractMapper<City> {
                         rs.getString("nom_ville")
                 );
                 cities.add(city);
-                this.addToCache(city);
+                super.addToCache(city);
             }
             rs.close();
         } catch (SQLException e) {
@@ -93,7 +74,7 @@ public class CityMapper extends AbstractMapper<City> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 city.setId(rs.getInt(1));
-                cache.put((long) city.getId(), city);
+                super.addToCache(city);
             } else {
                 logger.warn("Failed to insert city into the table: ", city.getCityName() + ". Continuing..." );
             }
@@ -104,6 +85,7 @@ public class CityMapper extends AbstractMapper<City> {
         }
         return city;
     }
+    // TODO gèrer le cache dans cette méthode
     public boolean update(City city) {
         int affectedRows = 0;
         try {
@@ -129,12 +111,16 @@ public class CityMapper extends AbstractMapper<City> {
                     "DELETE villes WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            removeFromCache(id);
             connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     protected String getSequenceQuery(){

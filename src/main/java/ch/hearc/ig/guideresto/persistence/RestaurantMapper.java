@@ -14,40 +14,42 @@ import java.sql.*;
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     private final Connection connection;
-    private Map<Long, Restaurant> cache = new HashMap<>(); //identity map :)
 
     public RestaurantMapper(Connection connection) {
         this.connection = connection;
     }
 
     public Restaurant findById(int id) {
-        Restaurant resto = null;
-        if (cache.containsKey(id)) { //identity map ici 😬😬😬😬😬😬
-            return cache.get(id);
-        }
-        try {
-            PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
-                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
-                    " t.numero num_type, t.libelle, t.description desc_type" +
-                    " FROM restaurants r" +
-                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
-                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
-                    " WHERE num_resto = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
+        if (super.cache.containsKey(id)) { //identity map ici 😬😬😬😬😬😬
+            return (Restaurant) super.cache.get(id); // on caste parce qu'on peut. On a mis que des restos dedans.
+        } else {
+            Restaurant resto = null;
+            try {
+                PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                        " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                        " t.numero num_type, t.libelle, t.description desc_type" +
+                        " FROM restaurants r" +
+                        " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                        " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                        " WHERE num_resto = ?");
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
 
-            if(rs.next()) {
-                resto = this.loadRestaurant(rs);
-            } else {
-                logger.error("No restaurant found with id " + id);
+                if(rs.next()) {
+                    resto = this.loadRestaurant(rs);
+                    super.addToCache(resto);
+                } else {
+                    logger.error("No restaurant found with id " + id);
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: {}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
+            return resto;
         }
-        return resto;
     }
 
+    // TODO gèrer le cache dans cette méthode
     public Set<Restaurant> findForCity(City city) {
         Set<Restaurant> restos = new HashSet<>();
         try {
@@ -67,6 +69,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
         return restos;
     }
+    // TODO gèrer le cache dans cette méthode
     public Set<Restaurant> findForType(RestaurantType type) {
         Set<Restaurant> restos = new HashSet<>();
         try {
@@ -89,6 +92,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     }
     public Set<Restaurant> findAll() {
         Set<Restaurant> restos = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
@@ -98,12 +102,9 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-
                 Restaurant restaurant = this.loadRestaurant(rs);
-                if (restaurant != null) {
-                    restos.add(restaurant);
-                    this.addToCache(restaurant); //à vérifier...
-                }
+                restos.add(restaurant);
+                super.addToCache(restaurant);
             }
             rs.close();
         } catch (SQLException e) {
@@ -112,31 +113,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return restos;
     }
 
-    public void addToCache(Restaurant restau){
-        long id = restau.getId();
-                /*Je pense qu'à terme il faudra changer ces créations pour utiliser des mappers également,
-                parce que sinon, rien me dit que la ville n'existe pas déjà. donc je dois passer par le mapper qui
-                est celui qui gère le cache des villes
-                pareil pour les types de restau
-                et après force à nous pour les localisations, je veux même pas savoir
-                 */
-                //city = new CityMapper(connection).create(city);
-
-                this.cache.put((long) id, restau);
-            }
-
-
-
-    public void resetCache(){
-        cache.clear();
-    }
-
-    private void removeFromCache(int id) {
-        if (!cache.containsKey((long) id)) {
-            Restaurant restau = cache.get((long) id);
-            cache.remove((long) id, restau);
-        }
-    }
     /*
     Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
     Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
@@ -194,15 +170,13 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 resto.setId(rs.getInt(1));
-                //identity map : Mise à jour du cache
-                this.cache.put((long) resto.getId(), resto);
+                super.addToCache(resto);
             } else {
                 logger.warn("Failed to insert resto into the table: ", resto.getName() + ". Continuing..." );
             }
             rs.close();
             connection.commit();
         } catch (SQLException | RuntimeException e) {
-            //mettre un rollback ici ?  j'ai pas réussi
             logger.error("SQLException or runtimeexcption: {}", e.getMessage());
         }
         return resto;
@@ -226,7 +200,12 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if (affectedRows > 0) {
+            super.removeFromCache(resto.getId());
+            return true;
+        } else {
+            return false;
+        }
     }
     public boolean delete(Restaurant resto) {
         return this.deleteById(resto.getId());
@@ -255,7 +234,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
 
-            this.cache.remove(id); // mise à jour du cache
+            super.removeFromCache(id);
             //peut-être qu'il faut aussi passer par les mappers pour les autres ....
             //comme ça le cache est aussi géré de leur coté......
 

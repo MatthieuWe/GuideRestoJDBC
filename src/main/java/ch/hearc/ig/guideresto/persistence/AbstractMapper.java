@@ -1,5 +1,6 @@
 package ch.hearc.ig.guideresto.persistence;
 
+import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.business.IBusinessObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,12 +9,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public abstract class AbstractMapper<T extends IBusinessObject> {
 
     protected static final Logger logger = LogManager.getLogger();
-
+    protected Map<Integer, IBusinessObject> cache = new HashMap<>();
 
     public abstract T findById(int id);
     public abstract Set<T> findAll();
@@ -94,16 +97,14 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
      * @return true si le cache ne contient aucun objet, false sinon
      */
     protected boolean isCacheEmpty() {
-        // TODO à implémenter par vos soins
-        throw new UnsupportedOperationException("Vous devez implémenter votre cache vous-même !");
+        return this.cache.isEmpty();
     }
 
     /**
      * Vide le cache
      */
     protected void resetCache() {
-        // TODO à implémenter par vos soins
-        throw new UnsupportedOperationException("Vous devez implémenter votre cache vous-même !");
+        this.cache.clear();
     }
 
     /**
@@ -111,16 +112,23 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
      * @param objet l'objet à ajouter
      */
     protected void addToCache(T objet) {
-        // TODO à implémenter par vos soins
-        throw new UnsupportedOperationException("Vous devez implémenter votre cache vous-même !");
+        int id = objet.getId();
+        if (!this.cache.containsKey(id)) {
+            this.cache.put(id, objet);
+        }
+        /* Selon le cours:
+        / Notez que la présence en cache est vérifiée 2 fois (findById et addToCache)
+        / – On s’assure ainsi de ne pas créer de doublon en mémoire; mieux vaut prévenir que guérir
+        / -> non je suis pas d'accord. Une map ne peut pas avoir de doublon de clé K, un put remplace la V existante
+        / -> ceci dit j'ai beaucoup de respect pour M. Matile alors on fait quand même comme il dit et on parlera plus tard
+         */
     }
 
     /**
      * Retire un objet du cache
      * @param id l'ID de l'objet à retirer du cache
      */
-    protected void removeFromCache(Integer id) {
-        // TODO à implémenter par vos soins
-        throw new UnsupportedOperationException("Vous devez implémenter votre cache vous-même !");
+    protected void removeFromCache(int id) {
+            this.cache.remove(id);
     }
 }
