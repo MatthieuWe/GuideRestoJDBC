@@ -22,19 +22,27 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public BasicEvaluation findById(int id) {
         BasicEvaluation basicEvaluation = null;
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM likes WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT l.numero num_like, l.appreciation, l.date_eval, l.adresse_ip" +
+                            " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                            " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                            " t.numero num_type, t.libelle, t.description desc_type" +
+                            " FROM likes l" +
+                            " INNER JOIN restaurants r ON l.fk_rest = r.numero" +
+                            " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                            " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                            " WHERE l.numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
-            Boolean appreciation;
-            if ("T" == rs.getString("appreciation")) {
-                appreciation=true;
-            } else {
-                appreciation=false;
-            }
-
             if (rs.next()) {
-                Restaurant restaurant = new RestaurantMapper(connection).findById(rs.getInt("fk_rest"));
+                Boolean appreciation;
+                if ("T" == rs.getString("appreciation")) {
+                    appreciation=true;
+                } else {
+                    appreciation=false;
+                }
+                Restaurant restaurant = super.loadRestaurant(rs);
                 basicEvaluation = new BasicEvaluation(
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
@@ -84,21 +92,28 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     public Set<BasicEvaluation> findAll() {
         Set<BasicEvaluation> basicEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM likes");
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT l.numero num_like, l.appreciation, l.date_eval, l.adresse_ip" +
+                    " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM likes l" +
+                    " INNER JOIN restaurants r ON l.fk_rest = r.numero" +
+                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero"
+            );
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                //beep boop identity map ???
-                Restaurant restaurant = new RestaurantMapper(connection).findById(rs.getInt("fk_rest"));
-
                 Boolean appreciation;
                 if ("T" == rs.getString("appreciation")) {
                 	appreciation=true;
                 } else {
                 	appreciation=false;
                 }
+                Restaurant restaurant = super.loadRestaurant(rs);
 
                 basicEvaluations.add(new BasicEvaluation(
-                        rs.getInt("numero"),
+                        rs.getInt("num_like"),
                         rs.getDate("date_eval"),
                         restaurant,
                         appreciation, //🥰🥰🥰🥰🥰🥰 ça marchera !
@@ -127,7 +142,6 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             s.executeUpdate();
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
-                int id = rs.getInt(1);
                 basicEvaluation.setId(rs.getInt(1));
             } else {
                 logger.warn("Failed to insert basic evaluation into the table : ");

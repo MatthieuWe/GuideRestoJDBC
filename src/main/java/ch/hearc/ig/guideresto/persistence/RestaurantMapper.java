@@ -113,46 +113,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return restos;
     }
 
-    /*
-    Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
-    Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
-        -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
-    pour retrouver tous les restos sans les charger à double depuis la DB...
-    TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
-    */
-    // Eager Loading relation n..1
-    private Restaurant loadRestaurant(ResultSet rs) throws SQLException {
-
-        City city = new City(rs.getInt("num_ville"),
-                rs.getString("code_postal"),
-                rs.getString("nom_ville"));
-        return this.loadRestaurant(rs, city);
-    }
-
-    private Restaurant loadRestaurant(ResultSet rs, City city) throws SQLException {
-        Localisation address = new Localisation(rs.getString("adresse"), city);
-        RestaurantType type = new RestaurantType(rs.getInt("num_type"),
-                rs.getString("libelle"),
-                rs.getString("desc_type"));
-        return this.loadRestaurant(rs, address, type);
-    }
-    private Restaurant loadRestaurant(ResultSet rs, RestaurantType type) throws SQLException {
-        City city = new City(rs.getInt("num_ville"),
-                rs.getString("code_postal"),
-                rs.getString("nom_ville"));
-        Localisation address = new Localisation(rs.getString("adresse"), city);
-        return this.loadRestaurant(rs, address, type);
-    }
-    private Restaurant loadRestaurant(ResultSet rs, Localisation address, RestaurantType type) throws SQLException {
-        Restaurant resto = new Restaurant(
-                rs.getInt("num_resto"),
-                rs.getString("nom"),
-                rs.getString("desc_resto"),
-                rs.getString("site_web"),
-                address,
-                type);
-        return resto;
-    }
     public Restaurant create(Restaurant resto) {
         try {
             String generatedColumns[] = { "numero" };

@@ -18,10 +18,6 @@ public class CompleteEvaluation extends Evaluation {
     private String username;
     private Set<Grade> grades;
 
-    public CompleteEvaluation() {
-        this(null, null, null, null);
-    }
-
     public CompleteEvaluation(Date visitDate, Restaurant restaurant, String comment, String username) {
         this(null, visitDate, restaurant, comment, username);
     }
