@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.City;
+import ch.hearc.ig.guideresto.business.RestaurantType;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,16 +17,22 @@ public class CityMapper extends AbstractMapper<City> {
     public CityMapper(Connection connection) {
         this.connection = connection;
     }
-    public void clearCache(){
+    public void resetCache(){
         cache.clear();
     }
-    private City addToCache(ResultSet rs) throws SQLException {
-        int id = rs.getInt("numero");
+
+    private void addToCache(City city) throws SQLException {
+        long id = city.getId();
         if (!cache.containsKey((long) id)) {
-            City city = new City(id, rs.getString("code_postal"), rs.getString("nom_ville"));
             cache.put((long) id, city);
         }
-        return cache.get((long) id);
+    }
+
+    private void removeFromCache(int id) throws SQLException {
+        if (!cache.containsKey((long) id)) {
+            City city = cache.get((long) id);
+            cache.remove((long) id, city);
+        }
     }
 
     public City findById(int id) {
@@ -59,7 +66,13 @@ public class CityMapper extends AbstractMapper<City> {
             PreparedStatement s = connection.prepareStatement("SELECT * FROM villes");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                cities.add(addToCache(rs));
+                City city = new City(
+                        rs.getInt("numero"),
+                        rs.getString("code_postal"),
+                        rs.getString("nom_ville")
+                );
+                cities.add(city);
+                this.addToCache(city);
             }
             rs.close();
         } catch (SQLException e) {
@@ -116,9 +129,7 @@ public class CityMapper extends AbstractMapper<City> {
                     "DELETE villes WHERE numero = ?");
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
-            if (affectedRows > 0) {
-                cache.remove((long) id);
-            }
+            removeFromCache(id);
             connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());

@@ -16,19 +16,18 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         this.connection = connection;
     }
 
-    private RestaurantType addToCache(ResultSet rs) throws SQLException {
-        int id = rs.getInt("numero");
-
-        if (!cache.containsKey((long) id)) {
-            RestaurantType type = new RestaurantType(
-                    id,
-                    rs.getString("libelle"),
-                    rs.getString("description")
-            );
+    public void addToCache(RestaurantType type) {
+        int id = type.getId();
             cache.put((long) id, type);
         }
 
-        return cache.get((long) id);
+
+
+    private void removeFromCache(int id) {
+        if (!cache.containsKey((long) id)) {
+            RestaurantType type = cache.get((long) id);
+            cache.remove((long) id, type);
+        }
     }
 
     public RestaurantType findById(int id) {
@@ -43,7 +42,12 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             // recherche sur la clé primaire donc max 1 resultat
             // sinon on remplirait une List avec une boucle while
             if(rs.next()) {
-                type = addToCache(rs);
+                type = new RestaurantType(
+                        rs.getInt("numero"),
+                        rs.getString("libelle"),
+                        rs.getString("description")
+                );
+                this.addToCache(type);
             } else {
                 logger.error("No such restaurant type");
             }
@@ -171,7 +175,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         return "SELECT Count(*) FROM types_gastronomiques";
     }
 
-    public void clearCache(){
+    public void resetCache(){
         cache.clear();
     }
 

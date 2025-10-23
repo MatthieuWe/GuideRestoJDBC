@@ -98,9 +98,11 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                Restaurant resto = addToCache(rs); //j'ai fait comme ça je sais pas si c'est juste, c'est juste que s'il y a rien et je le mets dans la liste ça va merder
-                if (resto != null) {
-                    restos.add(resto);
+
+                Restaurant restaurant = this.loadRestaurant(rs);
+                if (restaurant != null) {
+                    restos.add(restaurant);
+                    this.addToCache(restaurant); //à vérifier...
                 }
             }
             rs.close();
@@ -110,14 +112,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return restos;
     }
 
-    private Restaurant addToCache(ResultSet rs){
-        int pk = 0;
-        try {
-            pk = rs.getInt(1); //l'id es tle premier retourné dans la requête SQL donc on est OKAY
-            if (!this.cache.containsKey(pk)) {
-                City city = new City(rs.getInt("num_ville"),
-                        rs.getString("code_postal"),
-                        rs.getString("nom_ville"));
+    public void addToCache(Restaurant restau){
+        long id = restau.getId();
                 /*Je pense qu'à terme il faudra changer ces créations pour utiliser des mappers également,
                 parce que sinon, rien me dit que la ville n'existe pas déjà. donc je dois passer par le mapper qui
                 est celui qui gère le cache des villes
@@ -125,32 +121,21 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 et après force à nous pour les localisations, je veux même pas savoir
                  */
                 //city = new CityMapper(connection).create(city);
-                Localisation address = new Localisation(rs.getString("adresse"), city);
 
-                RestaurantType type = new RestaurantType(rs.getInt("num_type"),
-                        rs.getString("libelle"),
-                        rs.getString("desc_type"));
-
-
-
-                Restaurant resto = new Restaurant(
-                        rs.getInt("num_resto"),
-                        rs.getString("nom"),
-                        rs.getString("desc_resto"),
-                        rs.getString("site_web"),
-                        address,
-                        type);
-                this.cache.put((long) pk, resto);
+                this.cache.put((long) id, restau);
             }
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
-        }
-        return this.cache.get(pk);
 
+
+
+    public void resetCache(){
+        cache.clear();
     }
 
-    public void clearCache(){
-        cache.clear();
+    private void removeFromCache(int id) {
+        if (!cache.containsKey((long) id)) {
+            Restaurant restau = cache.get((long) id);
+            cache.remove((long) id, restau);
+        }
     }
     /*
     Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
