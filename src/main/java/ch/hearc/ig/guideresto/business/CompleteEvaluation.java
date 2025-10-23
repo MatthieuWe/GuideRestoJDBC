@@ -48,8 +48,8 @@ public class CompleteEvaluation extends Evaluation {
     public Set<Grade> getGrades() {
         if (this.grades == null) {
             Connection connection = ConnectionUtils.getConnection();
-            GradeMapper gradesMapper = new GradeMapper(connection);            this.grades = gradesMapper.findForCompleteEvaluation(this.getId());
-            this.grades = gradesMapper.findForCompleteEvaluation(this.getId());
+            GradeMapper gradesMapper = new GradeMapper(connection);
+            this.grades = gradesMapper.findForCompleteEvaluation(this);
         }
         return this.grades;
     }

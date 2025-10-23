@@ -8,15 +8,6 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
-/*
-  Notes:
-  - This implementation uses plain JDBC. Provide a valid JDBC URL with
-    System.setProperty("jdbc.url", "<your-jdbc-url>") before using, or
-    replace getConnection() with your project's connection provider.
-  - Assumes a table named 'grade' with columns: id (PK, auto-generated), name (VARCHAR), value (INT).
-  - Adjust column names and Grade constructor/mutators to match your business class.
-*/
-
 public class GradeMapper extends AbstractMapper<Grade> {
     private final Connection connection;
 
@@ -24,30 +15,24 @@ public class GradeMapper extends AbstractMapper<Grade> {
         this.connection = connection;
     }
 
-    private Grade loadGrade(ResultSet rs, CompleteEvaluation eval, EvaluationCriteria crit) throws SQLException {
-        return new Grade(
-                rs.getInt("numero"),
-                rs.getInt("note"),
-                eval,
-                crit
-        );
-    }
     private Grade loadGrade(ResultSet rs) throws SQLException {
-        CompleteEvaluation eval = new CompleteEvaluation(rs.getInt("NumeroCE"),
-                null, //voir comment mettre une date plus tard
-                null, //restaurant to be implemented later
-                rs.getString("nomCe"),
-                rs.getString("descriptionCe"));
-
-
-        EvaluationCriteria crit = new EvaluationCriteria(
-                rs.getInt("numCom"),
-                rs.getString("nomCom"),
-                rs.getString("descriptionCom")
+        CompleteEvaluation eval = new CompleteEvaluation(
+                rs.getInt("num_comm"),
+                rs.getDate("date_eval"),
+                super.loadRestaurant(rs),
+                rs.getString("commentaire"),
+                rs.getString("nom_utilisateur")
         );
-
+        return this.loadGrade(rs, eval);
+    }
+    private Grade loadGrade(ResultSet rs, CompleteEvaluation eval) throws SQLException {
+        EvaluationCriteria crit = new EvaluationCriteria(
+                rs.getInt("num_ce"),
+                rs.getString("nom_ce"),
+                rs.getString("desc_ce")
+        );
         return new Grade(
-                rs.getInt("numero"),
+                rs.getInt("num_note"),
                 rs.getInt("note"),
                 eval,
                 crit
@@ -58,13 +43,20 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Grade findById(int id) {
         Grade grade = null;
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
-                    "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
-                    "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
-                    "FROM notes n" +
-                    "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
-                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
-                    "WHERE numeroNote = ?");
+            // AAAAHHHAHHAA elle est énorme! Et en plus ça sert a rien on appelera jamais cette méthode...
+            PreparedStatement s = connection.prepareStatement("SELECT n.numero num_note, n.note, n.fk_comm, n.fk_crit,"+
+                    " co.numero num_comm, co.date_eval, co.commentaire, co.nom_utilisateur," +
+                    " ce.numero num_ce, ce.nom nom_ce, ce.description desc_ce," +
+                    " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM notes n" +
+                    " INNER JOIN commentaires co ON n.fk_comm = co.numero" +
+                    " INNER JOIN criteres_evaluation ce ON n.fk_crit = ce.numero"+
+                    " INNER JOIN restaurants r ON co.fk_rest = r.numero" +
+                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                    " WHERE n.numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
 
@@ -83,15 +75,20 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public Set<Grade> findAll() {
         Set<Grade> grades = new HashSet<>();
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
-                            "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
-                            "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
-                            "FROM notes n" +
-                            "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
-                            "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO");
+            PreparedStatement s = connection.prepareStatement("SELECT n.numero num_note, n.note, n.fk_comm, n.fk_crit,"+
+                    " co.numero num_comm, co.date_eval, co.commentaire, co.nom_utilisateur," +
+                    " ce.numero num_ce, ce.nom nom_ce, ce.description desc_ce," +
+                    " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                    " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                    " t.numero num_type, t.libelle, t.description desc_type" +
+                    " FROM notes n" +
+                    " INNER JOIN commentaires co ON n.fk_comm = co.numero" +
+                    " INNER JOIN criteres_evaluation ce ON n.fk_crit = ce.numero"+
+                    " INNER JOIN restaurants r ON co.fk_rest = r.numero" +
+                    " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                    " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                //blablablabla identity map ????????????????????
                 grades.add(this.loadGrade(rs));
             }
             rs.close();
@@ -131,8 +128,8 @@ public class GradeMapper extends AbstractMapper<Grade> {
         try {
             PreparedStatement s = connection.prepareStatement(
                     "UPDATE notes"+
-                    "SET note = ?, fk_comm = ?, fk_crit = ?"+
-                    "WHERE numero = ?");
+                        " SET note = ?, fk_comm = ?, fk_crit = ?"+
+                        " WHERE numero = ?");
             s.setInt(1, grade.getGrade());
             s.setInt(2, grade.getEvaluation().getId());
             s.setInt(3, grade.getCriteria().getId());
@@ -164,27 +161,25 @@ public class GradeMapper extends AbstractMapper<Grade> {
     protected String getExistsQuery() {return "SELECT numero FROM notes WHERE numero = ? ";}
     protected String getCountQuery() {return "SELECT count(*) FROM notes";}
 
-    public Set<Grade> findForCompleteEvaluation(int id) {
+    public Set<Grade> findForCompleteEvaluation(CompleteEvaluation evaluation) {
         Set<Grade> grades = new HashSet<>();
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT n.NUMERO as numeroNote, n.NOTE, n.FK_COMM, n.FK_CRIT,"+
-                    "ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
-                    "co.numero as numCom, co.nom as nomCom, co.description as descriptionCom " +
-                    "FROM notes n" +
-                    "INNER JOIN commentaires co ON n.FK_COMM = co.NUMERO" +
-                    "INNER JOIN criteres_evaluation ce ON n.FK_CRIT = ce.NUMERO"+
-                    "WHERE numCom = ?");
-            s.setInt(1, id);
+            PreparedStatement s = connection.prepareStatement("SELECT n.numero as numeroNote, n.note, n.fk_comm, n.fk_crit,"+
+                    " ce.numero as NumeroCE, ce.nom as nomCe, ce.description as descriptionCe," +
+                    " co.numero as numCom, co.nom as nomCom, co.description as descriptionCom" +
+                    " FROM notes n" +
+                    " INNER JOIN commentaires co ON n.fk_comm = co.numero" +
+                    " INNER JOIN criteres_evaluation ce ON n.fk_crit = ce.numero"+
+                    " WHERE numCom = ?");
+            s.setInt(1, evaluation.getId());
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                grades.add(this.loadGrade(rs));
+                grades.add(this.loadGrade(rs, evaluation));
             }
             rs.close();
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
         return grades;
-
     }
-
 }
