@@ -2,6 +2,7 @@ package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.*;
+import ch.hearc.ig.guideresto.services.RestaurantServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,39 +22,24 @@ public class Application {
     private static final Logger logger = LogManager.getLogger(Application.class);
     private static Connection connection;
 
-    private static RestaurantMapper restaurantMapper;
-    private static RestaurantTypeMapper typeMapper;
-    private static CityMapper cityMapper;
-    private static EvaluationCriteriaMapper criteriaMapper;
-    private static BasicEvaluationMapper basicEvaluationMapper;
-    private static CompleteEvaluationMapper completeEvaluationMapper;
-    private static GradeMapper gradeMapper;
-
     private static Set<RestaurantType> types;
     private static Set<Restaurant> restaurants;
     private static Set<EvaluationCriteria> criterias;
     private static Set<City> cities;
+
+    private static RestaurantServices restaurantServices;
 
 
     public static void main(String[] args) {
         scanner = new Scanner(System.in);
 
         try {
-            connection = ConnectionUtils.getConnection();
+            restaurantServices = new RestaurantServices();
 
-
-            restaurantMapper = new RestaurantMapper(connection);
-            typeMapper = new RestaurantTypeMapper(connection);
-            cityMapper = new CityMapper(connection);
-            criteriaMapper = new EvaluationCriteriaMapper(connection);
-            basicEvaluationMapper = new BasicEvaluationMapper(connection);
-            completeEvaluationMapper = new CompleteEvaluationMapper(connection);
-            gradeMapper = new GradeMapper(connection);
-
-            restaurants = new LinkedHashSet<>(restaurantMapper.findAll());
-            types = new LinkedHashSet<>(typeMapper.findAll());
-            cities = new LinkedHashSet<>(cityMapper.findAll());
-            criterias = new LinkedHashSet<>(criteriaMapper.findAll());
+            restaurants = restaurantServices.findAllRestaurant();
+            types = restaurantServices.findAllRestaurantType();
+            cities = restaurantServices.findAllCities();
+            criterias = restaurantServices.findAllEvaluationCriteria();
 
 
             System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
@@ -229,7 +215,7 @@ public class Application {
             System.out.println("Veuillez entrer le nom de la nouvelle ville : ");
             city.setCityName(readString());
             // crée la ville dans la DB et l'ajoute au Set
-            cities.add(cityMapper.create(city));
+            cities.add(restaurantServices.createCity(city)); ///changemnet ici pour la couche de services.
             return city;
         }
 
@@ -306,7 +292,7 @@ public class Application {
         Restaurant restaurant = new Restaurant(name, description, website, street, city, restaurantType);
         city.getRestaurants().add(restaurant);
         restaurantType.getRestaurants().add(restaurant);
-        restaurants.add(restaurantMapper.create(restaurant));
+        restaurants.add(restaurantServices.createRestaurant(restaurant)); //service ici
 
         showRestaurant(restaurant);
     }
@@ -449,7 +435,7 @@ public class Application {
             ipAddress = "Indisponible";
         }
         BasicEvaluation eval = new BasicEvaluation(new Date(), restaurant, like, ipAddress);
-        restaurant.getEvaluations().add(basicEvaluationMapper.create(eval));
+        restaurant.getEvaluations().add(restaurantServices.createBasicEvaluation(eval));
         System.out.println("Votre vote a été pris en compte !");
     }
 
@@ -466,7 +452,7 @@ public class Application {
         String comment = readString();
 
         CompleteEvaluation eval = new CompleteEvaluation(new Date(), restaurant, comment, username);
-        restaurant.getEvaluations().add(completeEvaluationMapper.create(eval));
+        restaurant.getEvaluations().add(restaurantServices.createCompleteEvaluation(eval));
 
         Grade grade; // L'utilisateur va saisir une note pour chaque critère existant.
         System.out.println("Veuillez svp donner une note entre 1 et 5 pour chacun de ces critères : ");
@@ -474,7 +460,7 @@ public class Application {
             System.out.println(currentCriteria.getName() + " : " + currentCriteria.getDescription());
             Integer note = readInt();
             grade = new Grade(note, eval, currentCriteria);
-            eval.getGrades().add(gradeMapper.create(grade));
+            eval.getGrades().add(restaurantServices.createGrade(grade));
         }
 
         System.out.println("Votre évaluation a bien été enregistrée, merci !");
@@ -502,7 +488,7 @@ public class Application {
             restaurant.getType().getRestaurants().remove(restaurant); // Il faut d'abord supprimer notre restaurant puisque le type va peut-être changer
             restaurant.setType(newType);
             newType.getRestaurants().add(restaurant);
-            restaurantMapper.update(restaurant);
+            restaurantServices.updateRestaurant(restaurant);
         }
 
         System.out.println("Merci, le restaurant a bien été modifié !");
@@ -525,7 +511,7 @@ public class Application {
             restaurant.getAddress().getCity().getRestaurants().remove(restaurant); // On supprime l'adresse de la ville
             restaurant.getAddress().setCity(newCity);
             newCity.getRestaurants().add(restaurant);
-            restaurantMapper.update(restaurant);
+            restaurantServices.updateRestaurant(restaurant);
         }
 
         System.out.println("L'adresse a bien été modifiée ! Merci !");
@@ -540,7 +526,7 @@ public class Application {
         System.out.println("Etes-vous sûr de vouloir supprimer ce restaurant ? (O/n)");
         String choice = readString();
         if (choice.equals("o") || choice.equals("O")) {
-            if(restaurantMapper.delete(restaurant)) {
+            if(restaurantServices.deleteRestaurant(restaurant)) {
                 restaurants.remove(restaurant);
                 restaurant.getAddress().getCity().getRestaurants().remove(restaurant);
                 restaurant.getType().getRestaurants().remove(restaurant);
