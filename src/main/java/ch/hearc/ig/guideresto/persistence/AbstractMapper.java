@@ -112,14 +112,11 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
      */
     protected void addToCache(T objet) {
         int id = objet.getId();
-        if (!this.cache.containsKey(id)) {
-            this.cache.put(id, objet);
-        }
+        this.cache.put(id, objet);
         /* Selon le cours:
         / Notez que la présence en cache est vérifiée 2 fois (findById et addToCache)
         / – On s’assure ainsi de ne pas créer de doublon en mémoire; mieux vaut prévenir que guérir
         / -> non je suis pas d'accord. Une map ne peut pas avoir de doublon de clé K, un put remplace la V existante
-        / -> ceci dit j'ai beaucoup de respect pour M. Matile alors on fait quand même comme il dit et on parlera plus tard
          */
     }
 
@@ -138,7 +135,13 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
     / Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
     /    -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
     / pour retrouver tous les restos sans les charger à double depuis la DB...
-    TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
+    il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
+    UPDATE 23.10.2025: On va accepter qu'il y ait certains doublons en mémoire pour éviter les références circulaires
+    et permettre le eager loading (charger un resto avec une seule requete et des jointures sur ville et type)
+    -> dans le cache des restaurants, depuis le RestaurantMapper, on garantit l'unicité des restos mais il y aura aussi
+    des villes et des types liés à ces restaurants qui existent en double dans le cache de leur propre mapper ou dans d'autres restos
+    -> dans le cache des villes ou des types, ce sera pareil donc on ne garantit l'unicité d'un type d'objet que
+    dans son propre cache/mapper, pas dans toute l'appli.
     */
     protected Restaurant loadRestaurant(ResultSet rs) throws SQLException {
         City city = new City(rs.getInt("num_ville"),

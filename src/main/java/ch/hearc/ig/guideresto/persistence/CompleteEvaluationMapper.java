@@ -17,8 +17,11 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
     public CompleteEvaluation findById(int id) {
         CompleteEvaluation completeEvaluation = null;
-        try {
-            PreparedStatement s = connection.prepareStatement(
+        if (super.cache.containsKey(id)) {
+            completeEvaluation = (CompleteEvaluation) super.cache.get(id);
+        } else {
+            try {
+                PreparedStatement s = connection.prepareStatement(
                     "SELECT c.numero num_comm, c.date_eval, c.commentaire, c.nom_utilisateur" +
                             " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                             " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
@@ -28,23 +31,24 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
                             " INNER JOIN villes v ON r.fk_ville = v.numero" +
                             " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
                             " WHERE c.numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
-            if(rs.next()) {
-                Restaurant restaurant = super.loadRestaurant(rs);
-                completeEvaluation = new CompleteEvaluation(
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
+                if(rs.next()) {
+                    Restaurant restaurant = super.loadRestaurant(rs);
+                    completeEvaluation = new CompleteEvaluation(
                         rs.getInt("num_comm"),
                         rs.getDate("date_eval"),
                         restaurant,
                         rs.getString("commentaire"),
                         rs.getString("nom_utilisateur")
-                );
-            } else {
-                logger.error("No such city");
+                    );
+                } else {
+                    logger.error("No such city");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: {}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
         }
         return completeEvaluation;
     }
@@ -71,6 +75,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     }
     public Set<CompleteEvaluation> findAll() {
         Set<CompleteEvaluation> completeEvaluations = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement(
                     "SELECT c.numero num_comm, c.date_eval, c.commentaire, c.nom_utilisateur" +
@@ -85,13 +90,15 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 Restaurant restaurant = super.loadRestaurant(rs);
-                completeEvaluations.add(new CompleteEvaluation(
+                CompleteEvaluation completeEvaluation = new CompleteEvaluation(
                         rs.getInt("num_comm"),
                         rs.getDate("date_eval"),
                         restaurant,
                         rs.getString("commentaire"),
                         rs.getString("nom_utilisateur")
-                ));
+                );
+                completeEvaluations.add(completeEvaluation);
+                super.addToCache(completeEvaluation);
             }
             rs.close();
         } catch (SQLException e) {
@@ -114,6 +121,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 completeEvaluation.setId(rs.getInt(1));
+                super.addToCache(completeEvaluation);
             } else {
                 logger.warn("Failed to insert comment into the table: ", completeEvaluation.getVisitDate() + ". Continuing..." );
             }
@@ -139,6 +147,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
             affectedRows = s.executeUpdate();
             connection.commit();
+            super.addToCache(completeEvaluation);
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -158,7 +167,12 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     protected String getSequenceQuery(){

@@ -49,7 +49,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
     }
 
-    // TODO gèrer le cache dans cette méthode
     public Set<Restaurant> findForCity(City city) {
         Set<Restaurant> restos = new HashSet<>();
         try {
@@ -62,6 +61,9 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 restos.add(this.loadRestaurant(rs, city));
+                /* IMPORTANT ici on ne met pas les restos en cache. Cette méthode est utilisée pour lazy loader les restos
+                / d'un objet City. Si on les met en cache, on va créer des références circulaires, et ça, c'est pas bien.
+                 */
             }
             rs.close();
         } catch (SQLException e) {
@@ -69,7 +71,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
         return restos;
     }
-    // TODO gèrer le cache dans cette méthode
     public Set<Restaurant> findForType(RestaurantType type) {
         Set<Restaurant> restos = new HashSet<>();
         try {
@@ -82,6 +83,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 restos.add(this.loadRestaurant(rs, type));
+                // Idem, on ne met pas en cache
             }
             rs.close();
         } catch (SQLException e) {
@@ -92,7 +94,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     }
     public Set<Restaurant> findAll() {
         Set<Restaurant> restos = new HashSet<>();
-        super.resetCache();
+        super.resetCache(); // bonne occasion pour rafraîchir le cache comme on va de toute manière tout charger
         try {
             PreparedStatement s = connection.prepareStatement("SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                     " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
@@ -162,6 +164,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
         if (affectedRows > 0) {
             super.removeFromCache(resto.getId());
+            super.addToCache(resto);
             return true;
         } else {
             return false;
@@ -194,9 +197,11 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             s.setInt(1, id);
             affectedRows = s.executeUpdate();
 
-            super.removeFromCache(id);
-            //peut-être qu'il faut aussi passer par les mappers pour les autres ....
-            //comme ça le cache est aussi géré de leur coté......
+            super.removeFromCache(id); // enleve le resto du cache (que le resto)
+            /* on n'a pas accès aux caches des autres objets depuis ici, ils risquent d'y rester comme des fantômes un moment...
+            / -> acceptable, les caches de ces objets-là sont quasi inutiles. Ils ne sont jamais accédés autrement que
+            / depuis leur restaurant et meme si on voulait tous les lister, les méthodes findAll() font un reset du cache.
+             */
 
             connection.commit();
         } catch (SQLException e) {

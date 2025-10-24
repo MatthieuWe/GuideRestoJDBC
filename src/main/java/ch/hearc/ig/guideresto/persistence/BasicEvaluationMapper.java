@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.BasicEvaluation;
+import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.business.Evaluation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 
@@ -21,8 +22,11 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     @Override
     public BasicEvaluation findById(int id) {
         BasicEvaluation basicEvaluation = null;
-        try {
-            PreparedStatement s = connection.prepareStatement(
+        if (super.cache.containsKey(id)) {
+            basicEvaluation = (BasicEvaluation) super.cache.get(id);
+        } else {
+            try {
+                PreparedStatement s = connection.prepareStatement(
                     "SELECT l.numero num_like, l.appreciation, l.date_eval, l.adresse_ip" +
                             " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
                             " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
@@ -32,30 +36,32 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
                             " INNER JOIN villes v ON r.fk_ville = v.numero" +
                             " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
                             " WHERE l.numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
 
-            if (rs.next()) {
-                Boolean appreciation;
-                if ("T" == rs.getString("appreciation")) {
-                    appreciation=true;
-                } else {
-                    appreciation=false;
-                }
-                Restaurant restaurant = super.loadRestaurant(rs);
-                basicEvaluation = new BasicEvaluation(
+                if (rs.next()) {
+                    Boolean appreciation;
+                    if ("T" == rs.getString("appreciation")) {
+                        appreciation=true;
+                    } else {
+                        appreciation=false;
+                    }
+                    Restaurant restaurant = super.loadRestaurant(rs);
+                    basicEvaluation = new BasicEvaluation(
                         rs.getInt("numero"),
                         rs.getDate("date_eval"),
                         restaurant,
                         appreciation,
                         rs.getString("adresse_ip")
-                );
-            } else {
-                logger.error("No basic evaluation found");
+                    );
+                    super.addToCache(basicEvaluation);
+                } else {
+                    logger.error("No basic evaluation found");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException:{}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException:{}", e.getMessage());
         }
         return basicEvaluation;
     }
@@ -91,6 +97,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     @Override
     public Set<BasicEvaluation> findAll() {
         Set<BasicEvaluation> basicEvaluations = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement(
                     "SELECT l.numero num_like, l.appreciation, l.date_eval, l.adresse_ip" +
@@ -111,14 +118,15 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
                 	appreciation=false;
                 }
                 Restaurant restaurant = super.loadRestaurant(rs);
-
-                basicEvaluations.add(new BasicEvaluation(
+                BasicEvaluation basicEvaluation = new BasicEvaluation(
                         rs.getInt("num_like"),
                         rs.getDate("date_eval"),
                         restaurant,
                         appreciation, //🥰🥰🥰🥰🥰🥰 ça marchera !
                         rs.getString("adresse_ip")
-                ));
+                );
+                basicEvaluations.add(basicEvaluation);
+                super.addToCache(basicEvaluation);
             }
             rs.close();
         } catch (SQLException e) {
@@ -143,6 +151,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 basicEvaluation.setId(rs.getInt(1));
+                super.addToCache(basicEvaluation);
             } else {
                 logger.warn("Failed to insert basic evaluation into the table : ");
             }
@@ -170,6 +179,7 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             s.setInt(5, basicEvaluation.getId());
             affectedRows = s.executeUpdate();
             connection.commit();
+            super.addToCache(basicEvaluation);
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
@@ -193,7 +203,12 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override

@@ -42,9 +42,12 @@ public class GradeMapper extends AbstractMapper<Grade> {
     @Override
     public Grade findById(int id) {
         Grade grade = null;
-        try {
+        if (super.cache.containsKey(id)) {
+            grade = (Grade) super.cache.get(id);
+        } else {
+            try {
             // AAAAHHHAHHAA elle est énorme! Et en plus ça sert a rien on appelera jamais cette méthode...
-            PreparedStatement s = connection.prepareStatement("SELECT n.numero num_note, n.note, n.fk_comm, n.fk_crit,"+
+                PreparedStatement s = connection.prepareStatement("SELECT n.numero num_note, n.note, n.fk_comm, n.fk_crit,"+
                     " co.numero num_comm, co.date_eval, co.commentaire, co.nom_utilisateur," +
                     " ce.numero num_ce, ce.nom nom_ce, ce.description desc_ce," +
                     " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
@@ -57,23 +60,26 @@ public class GradeMapper extends AbstractMapper<Grade> {
                     " INNER JOIN villes v ON r.fk_ville = v.numero" +
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
                     " WHERE n.numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
 
-            if(rs.next()) {
-                grade = this.loadGrade(rs);
-            } else {
-                logger.error("No grade found");
+                if(rs.next()) {
+                    grade = this.loadGrade(rs);
+                    super.addToCache(grade);
+                } else {
+                    logger.error("No grade found");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: " + e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: " + e.getMessage());
         }
         return grade;
     }
 
     public Set<Grade> findAll() {
         Set<Grade> grades = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement("SELECT n.numero num_note, n.note, n.fk_comm, n.fk_crit,"+
                     " co.numero num_comm, co.date_eval, co.commentaire, co.nom_utilisateur," +
@@ -89,7 +95,9 @@ public class GradeMapper extends AbstractMapper<Grade> {
                     " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero");
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                grades.add(this.loadGrade(rs));
+                Grade grade = this.loadGrade(rs);
+                grades.add(grade);
+                super.addToCache(grade);
             }
             rs.close();
         } catch (SQLException e) {
@@ -112,6 +120,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 grade.setId(rs.getInt(1));
+                super.addToCache(grade);
             } else{
                 logger.warn("Failed to insert grade into the table", grade.getGrade() + ". Continuing...");
             }
@@ -135,6 +144,7 @@ public class GradeMapper extends AbstractMapper<Grade> {
             s.setInt(3, grade.getCriteria().getId());
             affectedRows = s.executeUpdate();
             connection.commit();
+            super.addToCache(grade);
         }catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
@@ -154,7 +164,12 @@ public class GradeMapper extends AbstractMapper<Grade> {
         } catch (SQLException e) {
             logger.error("SQLException: " + e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     protected String getSequenceQuery() {return "SELECT seq_notes.NextVal FROM dual";}

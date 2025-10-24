@@ -14,34 +14,43 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     }
     public EvaluationCriteria findById(int id) {
         EvaluationCriteria criteria = null;
-        try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM CRITERES_EVALUATION WHERE id = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
+        if (super.cache.containsKey(id)) {
+            criteria = (EvaluationCriteria) super.cache.get(id);
+        } else {
+            try {
+                PreparedStatement s = connection.prepareStatement(
+                        "SELECT * FROM CRITERES_EVALUATION WHERE id = ?");
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
 
-            if(rs.next()) {
-                criteria = new EvaluationCriteria(
+                if(rs.next()) {
+                    criteria = new EvaluationCriteria(
                         rs.getInt("numero"),
                         rs.getString("nom"),
                         rs.getString("description")
-                );
-            } else {
-                logger.error("No evaluation criteria found");
+                    );
+                } else {
+                    logger.error("No evaluation criteria found");
+                }
+                rs.close();
+                super.addToCache(criteria);
+            } catch (SQLException e) {
+                logger.error("SQLException: " + e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: " + e.getMessage());
         }
         return criteria;
     }
 
     public Set<EvaluationCriteria> findAll() {
         Set<EvaluationCriteria> result = new HashSet<>();
+        super.resetCache();
         String sql = "SELECT * FROM CRITERES_EVALUATION";
         try (PreparedStatement s = connection.prepareStatement(sql);
              ResultSet rs = s.executeQuery()) {
             while (rs.next()) {
-                result.add(mapRow(rs));
+                EvaluationCriteria criteria = mapRow(rs);
+                result.add(criteria);
+                super.addToCache(criteria);
             }
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
@@ -61,8 +70,10 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
                     object.setId(keys.getInt(1));
+                    super.addToCache(object);
                 }
             }
+            connection.commit();
             return object;
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
@@ -72,17 +83,19 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
 
     @Override
     public boolean update(EvaluationCriteria object) {
+        int affectedRows = 0;
         String sql = "UPDATE CRITERES_EVALUATION SET numero = ?, nom = ?, description = ? WHERE id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, object.getId());
             ps.setString(2, object.getName());
             ps.setString(3, object.getDescription());
             ps.setInt(4, object.getId());
-            return ps.executeUpdate() > 0;
+            connection.commit();
+            super.addToCache(object);
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
-            return false;
         }
+        return affectedRows > 0;
     }
 
     @Override
@@ -92,12 +105,19 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
 
     @Override
     public boolean deleteById(int id) {
+        int affectedRows =0;
         String sql = "DELETE FROM CRITERES_EVALUATION WHERE id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
-            return ps.executeUpdate() > 0;
+            affectedRows = ps.executeUpdate();
+            connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
+        }
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
             return false;
         }
     }
