@@ -18,10 +18,6 @@ public class CompleteEvaluation extends Evaluation {
     private String username;
     private Set<Grade> grades;
 
-    public CompleteEvaluation() {
-        this(null, null, null, null);
-    }
-
     public CompleteEvaluation(Date visitDate, Restaurant restaurant, String comment, String username) {
         this(null, visitDate, restaurant, comment, username);
     }
@@ -52,8 +48,8 @@ public class CompleteEvaluation extends Evaluation {
     public Set<Grade> getGrades() {
         if (this.grades == null) {
             Connection connection = ConnectionUtils.getConnection();
-            GradeMapper gradesMapper = new GradeMapper(connection);            this.grades = gradesMapper.findForCompleteEvaluation(this.getId());
-            this.grades = gradesMapper.findForCompleteEvaluation(this.getId());
+            GradeMapper gradesMapper = new GradeMapper(connection);
+            this.grades = gradesMapper.findForCompleteEvaluation(this);
         }
         return this.grades;
     }

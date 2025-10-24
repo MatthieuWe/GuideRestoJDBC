@@ -18,16 +18,26 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public CompleteEvaluation findById(int id) {
         CompleteEvaluation completeEvaluation = null;
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM commentaires WHERE numero = ?");
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT c.numero num_comm, c.date_eval, c.commentaire, c.nom_utilisateur" +
+                            " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                            " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                            " t.numero num_type, t.libelle, t.description desc_type" +
+                            " FROM commentaires c" +
+                            " INNER JOIN restaurants r ON c.fk_rest = r.numero" +
+                            " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                            " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                            " WHERE c.numero = ?");
             s.setInt(1, id);
             ResultSet rs = s.executeQuery();
             if(rs.next()) {
+                Restaurant restaurant = super.loadRestaurant(rs);
                 completeEvaluation = new CompleteEvaluation(
-                        rs.getInt("numero"),
+                        rs.getInt("num_comm"),
                         rs.getDate("date_eval"),
-                        (Restaurant) rs.getObject("restaurant"), //à tester mdrrr
+                        restaurant,
                         rs.getString("commentaire"),
-                        rs.getString("utilisateur")
+                        rs.getString("nom_utilisateur")
                 );
             } else {
                 logger.error("No such city");
@@ -46,6 +56,7 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
                 completeEvaluations.add(new CompleteEvaluation(
+                        rs.getInt("numero"),
                         rs.getDate("date_eval"),
                         resto,
                         rs.getString("commentaire"),
@@ -61,12 +72,23 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     public Set<CompleteEvaluation> findAll() {
         Set<CompleteEvaluation> completeEvaluations = new HashSet<>();
         try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM commentaires");
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT c.numero num_comm, c.date_eval, c.commentaire, c.nom_utilisateur" +
+                            " r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                            " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                            " t.numero num_type, t.libelle, t.description desc_type" +
+                            " FROM commentaires c" +
+                            " INNER JOIN restaurants r ON c.fk_rest = r.numero" +
+                            " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                            " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                            " WHERE c.numero = ?");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
+                Restaurant restaurant = super.loadRestaurant(rs);
                 completeEvaluations.add(new CompleteEvaluation(
+                        rs.getInt("num_comm"),
                         rs.getDate("date_eval"),
-                        (Restaurant) rs.getObject("restaurant"), //à tester mdrrr
+                        restaurant,
                         rs.getString("commentaire"),
                         rs.getString("nom_utilisateur")
                 ));
@@ -81,12 +103,13 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         try {
             String generatedColumns[] = { "numero" };
             PreparedStatement s = connection.prepareStatement(
-                    "INSERT INTO commentaires (date_eval, commentaire, nom_utilisateur)" +
-                            "VALUES (?, ?, ?)",
+                    "INSERT INTO commentaires (date_eval, commentaire, nom_utilisateur, fk_rest)" +
+                            "VALUES (?, ?, ?, ?)",
                     generatedColumns);
-            s.setDate(1, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
+            s.setDate(1, new Date(completeEvaluation.getVisitDate().getTime()));
             s.setString(2, completeEvaluation.getComment());
             s.setString(3, completeEvaluation.getUsername());
+            s.setInt(4, completeEvaluation.getRestaurant().getId());
             s.executeUpdate();
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
@@ -108,11 +131,11 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
                     "UPDATE commentaires"+
                             "SET date_eval = ?, commentaire = ?, nom_utilisateur = ?, fk_rest = ? "
                     +"WHERE numero = ?");
-            s.setDate(2, new java.sql.Date(completeEvaluation.getVisitDate().getTime()));
-            s.setString(3, completeEvaluation.getComment());
-            s.setString(4, completeEvaluation.getUsername());
-            s.setInt(5, completeEvaluation.getRestaurant().getId());
-            s.setInt(1, completeEvaluation.getId());
+            s.setDate(1, new Date(completeEvaluation.getVisitDate().getTime()));
+            s.setString(2, completeEvaluation.getComment());
+            s.setString(3, completeEvaluation.getUsername());
+            s.setInt(4, completeEvaluation.getRestaurant().getId());
+            s.setInt(5, completeEvaluation.getId());
 
             affectedRows = s.executeUpdate();
             connection.commit();
@@ -139,13 +162,13 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     }
 
     protected String getSequenceQuery(){
-        return "SELECT seq_villes.NextVal FROM dual";
+        return "SELECT seq_commentaires.NextVal FROM dual";
     }
     protected String getExistsQuery() {
-        return "SELECT numero FROM villes WHERE numero = ?";
+        return "SELECT numero FROM commentaires WHERE numero = ?";
     }
     protected String getCountQuery() {
-        return "SELECT Count(*) FROM villes";
+        return "SELECT Count(*) FROM commentaires";
     }
 
 }

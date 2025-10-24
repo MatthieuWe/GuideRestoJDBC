@@ -1,7 +1,6 @@
 package ch.hearc.ig.guideresto.persistence;
 
-import ch.hearc.ig.guideresto.business.City;
-import ch.hearc.ig.guideresto.business.IBusinessObject;
+import ch.hearc.ig.guideresto.business.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -131,4 +130,45 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
     protected void removeFromCache(int id) {
             this.cache.remove(id);
     }
+
+
+    // Méthodes pour charger un restaurant sont utilisées par plusieurs mappers: eager load depuis les évaluations
+    /*
+    / Pour chaque resto qu'on charge en mémoire, on crée un nouvel objet en mémoire pour chaque ville et type
+    / Chaque resto aura une ville (Neuchâtel) qui est égale aux autres au sens de equals() mais pas au sens de ==
+    /    -> ce sont d'autres objets, elle est chargée plein de fois, on ne peut pas partir d'un de ces objets
+    / pour retrouver tous les restos sans les charger à double depuis la DB...
+    TODO il nous faut un moyen de tracker les objets en mémoire pour assurer leur unicité -> une identity map.
+    */
+    protected Restaurant loadRestaurant(ResultSet rs) throws SQLException {
+        City city = new City(rs.getInt("num_ville"),
+                rs.getString("code_postal"),
+                rs.getString("nom_ville"));
+        return this.loadRestaurant(rs, city);
+    }
+
+    protected Restaurant loadRestaurant(ResultSet rs, City city) throws SQLException {
+        RestaurantType type = new RestaurantType(rs.getInt("num_type"),
+                rs.getString("libelle"),
+                rs.getString("desc_type"));
+        return this.loadRestaurant(rs, city, type);
+    }
+    protected Restaurant loadRestaurant(ResultSet rs, RestaurantType type) throws SQLException {
+        City city = new City(rs.getInt("num_ville"),
+                rs.getString("code_postal"),
+                rs.getString("nom_ville"));
+        return this.loadRestaurant(rs, city, type);
+    }
+    protected Restaurant loadRestaurant(ResultSet rs, City city, RestaurantType type) throws SQLException {
+        Localisation address = new Localisation(rs.getString("adresse"), city);
+        Restaurant resto = new Restaurant(
+                rs.getInt("num_resto"),
+                rs.getString("nom"),
+                rs.getString("desc_resto"),
+                rs.getString("site_web"),
+                address,
+                type);
+        return resto;
+    }
+
 }
