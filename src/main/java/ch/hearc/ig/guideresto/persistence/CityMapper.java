@@ -9,43 +9,51 @@ import java.sql.*;
 public class CityMapper extends AbstractMapper<City> {
     private final Connection connection;
 
+
     public CityMapper(Connection connection) {
         this.connection = connection;
     }
 
     public City findById(int id) {
-        City city = null;
-        try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
-            if(rs.next()) {
-                city = new City(
-                        rs.getInt("numero"),
-                        rs.getString("code_postal"),
-                        rs.getString("nom_ville")
-                );
-            } else {
-                logger.error("No such city");
+        if (super.cache.containsKey(id)) {
+            return (City) super.cache.get(id);
+        } else {
+            City city = null;
+            try {
+                PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
+                if(rs.next()) {
+                    city = new City(
+                            rs.getInt("numero"),
+                            rs.getString("code_postal"),
+                            rs.getString("nom_ville")
+                    );
+                } else {
+                    logger.error("No such city");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: {}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
+            return city;
         }
-        return city;
     }
 
     public Set<City> findAll() {
         Set<City> cities = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement("SELECT * FROM villes");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                cities.add(new City(
+                City city = new City(
                         rs.getInt("numero"),
                         rs.getString("code_postal"),
                         rs.getString("nom_ville")
-                ));
+                );
+                cities.add(city);
+                super.addToCache(city);
             }
             rs.close();
         } catch (SQLException e) {
@@ -66,6 +74,7 @@ public class CityMapper extends AbstractMapper<City> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 city.setId(rs.getInt(1));
+                super.addToCache(city);
             } else {
                 logger.warn("Failed to insert city into the table: ", city.getCityName() + ". Continuing..." );
             }
@@ -76,6 +85,7 @@ public class CityMapper extends AbstractMapper<City> {
         }
         return city;
     }
+    // TODO gèrer le cache dans cette méthode
     public boolean update(City city) {
         int affectedRows = 0;
         try {
@@ -105,7 +115,12 @@ public class CityMapper extends AbstractMapper<City> {
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     protected String getSequenceQuery(){

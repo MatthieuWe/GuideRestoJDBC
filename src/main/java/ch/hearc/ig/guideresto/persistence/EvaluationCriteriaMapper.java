@@ -102,16 +102,12 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
         }
     }
 
-    @Override
-    protected String getSequenceQuery() {
-        return "SELECT nextval('criteres_evaluation_id_seq')";
+    protected String getSequenceQuery(){
+        return "SELECT seq_criteres_evaluation.NextVal FROM dual";
     }
-
-    @Override
     protected String getExistsQuery() {
-        return "SELECT 1 FROM CRITERES_EVALUATION WHERE id = ?";
+        return "SELECT numero FROM criteres_evaluation WHERE numero = ?";
     }
-
     @Override
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM CRITERES_EVALUATION";
@@ -124,13 +120,6 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
                 rs.getString("nom"),
                 rs.getString("description")
         );
-        // set id if column present and setter available
-        try {
-            int id = rs.getInt("id");
-            ec.setId(id);
-        } catch (SQLException ignore) {
-            // ignore if there's no id column or setter not applicable
-        }
         return ec;
     }
 }

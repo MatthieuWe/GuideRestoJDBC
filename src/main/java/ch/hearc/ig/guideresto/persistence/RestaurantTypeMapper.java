@@ -1,13 +1,15 @@
 package ch.hearc.ig.guideresto.persistence;
 
+import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.business.RestaurantType;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.sql.*;
 
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
-    // est-ce que c'est OK de la mettre ici?
     private final Connection connection;
 
     public RestaurantTypeMapper(Connection connection) {
@@ -15,28 +17,34 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     }
 
     public RestaurantType findById(int id) {
-        RestaurantType type = null;
-        try {
-            PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
-            s.setInt(1, id);
-            ResultSet rs = s.executeQuery();
-            // recherche sur la clé primaire donc max 1 resultat
-            // sinon on remplirait une List avec une boucle while
-            if(rs.next()) {
-                type = new RestaurantType(
-                        rs.getInt("numero"),
-                        rs.getString("libelle"),
-                        rs.getString("description")
-                );
-            } else {
-                logger.error("No such restaurant type");
+        if (super.cache.containsKey(id)) {
+            return (RestaurantType) super.cache.get(id);
+        } else {
+            RestaurantType type = null;
+            try {
+                PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques WHERE numero = ?");
+                s.setInt(1, id);
+                ResultSet rs = s.executeQuery();
+                // recherche sur la clé primaire donc max 1 resultat
+                // sinon on remplirait une List avec une boucle while
+                if(rs.next()) {
+                    type = new RestaurantType(
+                            rs.getInt("numero"),
+                            rs.getString("libelle"),
+                            rs.getString("description")
+                    );
+                    this.addToCache(type);
+                } else {
+                    logger.error("No such restaurant type");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                logger.error("SQLException: {}", e.getMessage());
             }
-            rs.close();
-        } catch (SQLException e) {
-            logger.error("SQLException: {}", e.getMessage());
+            return type;
         }
-        return type;
     }
+    // TODO gèrer le cache dans cette méthode
     public RestaurantType findByLabel(String label) {
         RestaurantType type = null;
         try {
@@ -62,15 +70,18 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 
     public Set<RestaurantType> findAll() {
         Set<RestaurantType> types = new HashSet<>();
+        super.resetCache();
         try {
             PreparedStatement s = connection.prepareStatement("SELECT * FROM types_gastronomiques");
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                types.add(new RestaurantType(
+                RestaurantType type = new RestaurantType(
                         rs.getInt("numero"),
                         rs.getString("libelle"),
                         rs.getString("description")
-                ));
+                );
+                types.add(type);
+                super.addToCache(type);
             }
             rs.close();
         } catch (SQLException e) {
@@ -91,6 +102,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             ResultSet rs = s.getGeneratedKeys();
             if (rs.next()) {
                 type.setId(rs.getInt(1));
+                super.addToCache(type);
             } else {
                 logger.warn("Failed to insert type into the table: ", type.getLabel() + ". Continuing..." );
             }
@@ -108,6 +120,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         }
         return type;
     }
+    // TODO gèrer le cache dans cette méthode
     public boolean update(RestaurantType type) {
         int affectedRows = 0;
         try {
@@ -137,7 +150,12 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
-        return affectedRows > 0;
+        if(affectedRows > 0) {
+            super.removeFromCache(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     protected String getSequenceQuery(){
@@ -149,5 +167,4 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     protected String getCountQuery() {
         return "SELECT Count(*) FROM types_gastronomiques";
     }
-
 }

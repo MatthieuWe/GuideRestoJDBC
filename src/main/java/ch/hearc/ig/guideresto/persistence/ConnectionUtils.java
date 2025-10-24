@@ -9,51 +9,53 @@ import java.sql.SQLException;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
-/**
- * Provide helper methods to deal with database connections.
- * Ideally, this should also manage instance pools in a bigger application.
- *
- * @author arnaud.geiser
- * @author alain.matile
- */
 public final class ConnectionUtils {
 
     private static final Logger logger = LogManager.getLogger();
     private static Connection instance;
 
-    //constructeur privé pour le singleton
     private ConnectionUtils() {
         throw new AssertionError("Static class - cannot be instantiated");
     }
 
     public static Connection getConnection() {
         try {
-            if (instance == null || instance.isClosed()) { // lazy initialisation
+            if (instance == null || instance.isClosed()) {
                 synchronized (ConnectionUtils.class) {
-                    if (instance != null && !instance.isClosed()) { //double check
-                        try {
-                            // Load database credentials from resources/database.properties
-                            ResourceBundle dbProps = ResourceBundle.getBundle("database");
-                            String url = dbProps.getString("database.url");
-                            String username = dbProps.getString("database.username");
-                            String password = dbProps.getString("database.password");
-
-                            logger.info("Trying to connect to user schema '{}' with JDBC string '{}'", username, url);
-
-                            Connection connection = DriverManager.getConnection(url, username, password);
-                            connection.setAutoCommit(false);
-                            ConnectionUtils.instance = connection; //put into a static class
-                        } catch (SQLException | MissingResourceException e) {
-                            logger.error(e.getMessage());
-                        }
+                    // Double-check after synchronization
+                    if (instance == null || instance.isClosed()) {
+                        createConnection();
                     }
-
                 }
             }
         } catch (SQLException e) {
-            logger.error(e.getMessage(), e);
+            logger.error("Error checking connection status: {}", e.getMessage(), e);
+            throw new RuntimeException("Database connection check failed", e);
         }
-        return instance; //return the instance
+        return instance;
+    }
+
+    private static void createConnection() {
+        try {
+            // Load database credentials from resources/database.properties
+            ResourceBundle dbProps = ResourceBundle.getBundle("database");
+            String url = dbProps.getString("database.url");
+            String username = dbProps.getString("database.username");
+            String password = dbProps.getString("database.password");
+
+            logger.info("Trying to connect to user schema '{}' with JDBC string '{}'", username, url);
+
+            Connection connection = DriverManager.getConnection(url, username, password);
+            connection.setAutoCommit(false);
+            instance = connection;
+
+            logger.info("Database connection established successfully!");
+
+        } catch (SQLException | MissingResourceException e) {
+            logger.error("FAILED to create database connection: {}", e.getMessage(), e);
+            // CRITICAL: Throw the exception so we know it failed!
+            throw new RuntimeException("Cannot establish database connection", e);
+        }
     }
 
     public static void closeConnection() {
@@ -62,11 +64,11 @@ public final class ConnectionUtils {
                 if (instance != null && !instance.isClosed()) {
                     instance.close();
                     instance = null;
+                    logger.info("Database connection closed");
                 }
             } catch (SQLException e) {
-                logger.error(e.getMessage(), e);
+                logger.error("Error closing database connection: {}", e.getMessage(), e);
             }
         }
     }
 }
-
