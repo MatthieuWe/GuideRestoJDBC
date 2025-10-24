@@ -44,7 +44,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             return type;
         }
     }
-    // TODO gèrer le cache dans cette méthode
     public RestaurantType findByLabel(String label) {
         RestaurantType type = null;
         try {
@@ -58,6 +57,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
                         rs.getString("libelle"),
                         rs.getString("description")
                 );
+                this.addToCache(type);
             } else {
                 logger.error("No such restaurant type");
             }
@@ -120,7 +120,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         }
         return type;
     }
-    // TODO gèrer le cache dans cette méthode
     public boolean update(RestaurantType type) {
         int affectedRows = 0;
         try {
@@ -130,6 +129,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             s.setString(2, type.getDescription());
             s.setInt(3, type.getId());
             affectedRows = s.executeUpdate();
+            super.addToCache(type);
             connection.commit();
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());

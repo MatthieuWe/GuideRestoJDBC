@@ -15,10 +15,10 @@ public class CityMapper extends AbstractMapper<City> {
     }
 
     public City findById(int id) {
+        City city = null;
         if (super.cache.containsKey(id)) {
-            return (City) super.cache.get(id);
+            city = (City) super.cache.get(id);
         } else {
-            City city = null;
             try {
                 PreparedStatement s = connection.prepareStatement("SELECT * FROM villes WHERE numero = ?");
                 s.setInt(1, id);
@@ -29,6 +29,7 @@ public class CityMapper extends AbstractMapper<City> {
                             rs.getString("code_postal"),
                             rs.getString("nom_ville")
                     );
+                    super.addToCache(city);
                 } else {
                     logger.error("No such city");
                 }
@@ -36,8 +37,8 @@ public class CityMapper extends AbstractMapper<City> {
             } catch (SQLException e) {
                 logger.error("SQLException: {}", e.getMessage());
             }
-            return city;
         }
+        return city;
     }
 
     public Set<City> findAll() {
@@ -85,7 +86,6 @@ public class CityMapper extends AbstractMapper<City> {
         }
         return city;
     }
-    // TODO gèrer le cache dans cette méthode
     public boolean update(City city) {
         int affectedRows = 0;
         try {
@@ -96,6 +96,7 @@ public class CityMapper extends AbstractMapper<City> {
             s.setInt(3, city.getId());
             affectedRows = s.executeUpdate();
             connection.commit();
+            super.addToCache(city);
         } catch (SQLException e) {
             logger.error("SQLException: {}", e.getMessage());
         }
