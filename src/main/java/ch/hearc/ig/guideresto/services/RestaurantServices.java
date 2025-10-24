@@ -30,7 +30,7 @@ public class RestaurantServices {
     }
 
     public Set<Restaurant> findAllRestaurant() {
-        return (LinkedHashSet<Restaurant>) restaurantMapper.findAll();
+        return restaurantMapper.findAll();
     }
     public Set<RestaurantType> findAllRestaurantType() {
         return restaurantTypeMapper.findAll();
