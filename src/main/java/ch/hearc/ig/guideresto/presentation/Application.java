@@ -52,9 +52,7 @@ public class Application {
         } catch (Exception e) {
             logger.error("An error occurred while connecting to the database: {}", e.getMessage());
         } finally {
-            if (connection != null) {
-                ConnectionUtils.closeConnection();
-            }
+            restaurantServices.shutdown();
         }
     }
 
@@ -209,13 +207,13 @@ public class Application {
         String choice = readString();
 
         if (choice.equals("NEW")) {
-            City city = new City();
             System.out.println("Veuillez entrer le NPA de la nouvelle ville : ");
-            city.setZipCode(readString());
+            String zipCode = readString();
             System.out.println("Veuillez entrer le nom de la nouvelle ville : ");
-            city.setCityName(readString());
+            String cityName = readString();
             // crée la ville dans la DB et l'ajoute au Set
-            cities.add(restaurantServices.createCity(city)); ///changemnet ici pour la couche de services.
+            City city = restaurantServices.createCity(zipCode, cityName);
+            cities.add(city);
             return city;
         }
 
@@ -427,15 +425,7 @@ public class Application {
      * @param like       Est-ce un like ou un dislike ?
      */
     private static void addBasicEvaluation(Restaurant restaurant, Boolean like) {
-        String ipAddress;
-        try {
-            ipAddress = Inet4Address.getLocalHost().toString(); // Permet de retrouver l'adresse IP locale de l'utilisateur.
-        } catch (UnknownHostException ex) {
-            logger.error("Error - Couldn't retreive host IP address");
-            ipAddress = "Indisponible";
-        }
-        BasicEvaluation eval = new BasicEvaluation(new Date(), restaurant, like, ipAddress);
-        restaurant.getEvaluations().add(restaurantServices.createBasicEvaluation(eval));
+        restaurant.getEvaluations().add(restaurantServices.createBasicEvaluation(restaurant, like));
         System.out.println("Votre vote a été pris en compte !");
     }
 
@@ -451,16 +441,16 @@ public class Application {
         System.out.println("Quel commentaire aimeriez-vous publier ?");
         String comment = readString();
 
-        CompleteEvaluation eval = new CompleteEvaluation(new Date(), restaurant, comment, username);
-        restaurant.getEvaluations().add(restaurantServices.createCompleteEvaluation(eval));
+        CompleteEvaluation eval = restaurantServices.createCompleteEvaluation(restaurant, comment, username);
+        restaurant.getEvaluations().add(eval);
 
         Grade grade; // L'utilisateur va saisir une note pour chaque critère existant.
         System.out.println("Veuillez svp donner une note entre 1 et 5 pour chacun de ces critères : ");
         for (EvaluationCriteria currentCriteria : criterias) {
             System.out.println(currentCriteria.getName() + " : " + currentCriteria.getDescription());
             Integer note = readInt();
-            grade = new Grade(note, eval, currentCriteria);
-            eval.getGrades().add(restaurantServices.createGrade(grade));
+            grade = restaurantServices.createGrade(note, eval, currentCriteria);
+            eval.getGrades().add(grade);
         }
 
         System.out.println("Votre évaluation a bien été enregistrée, merci !");
@@ -484,12 +474,7 @@ public class Application {
         System.out.println("Nouveau type de restaurant : ");
 
         RestaurantType newType = pickRestaurantType(types);
-        if (newType != null && newType != restaurant.getType()) {
-            restaurant.getType().getRestaurants().remove(restaurant); // Il faut d'abord supprimer notre restaurant puisque le type va peut-être changer
-            restaurant.setType(newType);
-            newType.getRestaurants().add(restaurant);
-            restaurantServices.updateRestaurant(restaurant);
-        }
+        restaurantServices.updateRestaurant(restaurant, newType, restaurant.getAddress().getCity());
 
         System.out.println("Merci, le restaurant a bien été modifié !");
     }
@@ -507,12 +492,7 @@ public class Application {
         restaurant.getAddress().setStreet(readString());
 
         City newCity = pickCity(cities);
-        if (newCity != null && newCity != restaurant.getAddress().getCity()) {
-            restaurant.getAddress().getCity().getRestaurants().remove(restaurant); // On supprime l'adresse de la ville
-            restaurant.getAddress().setCity(newCity);
-            newCity.getRestaurants().add(restaurant);
-            restaurantServices.updateRestaurant(restaurant);
-        }
+        restaurantServices.updateRestaurant(restaurant, restaurant.getType(), newCity);
 
         System.out.println("L'adresse a bien été modifiée ! Merci !");
     }
@@ -528,8 +508,6 @@ public class Application {
         if (choice.equals("o") || choice.equals("O")) {
             if(restaurantServices.deleteRestaurant(restaurant)) {
                 restaurants.remove(restaurant);
-                restaurant.getAddress().getCity().getRestaurants().remove(restaurant);
-                restaurant.getType().getRestaurants().remove(restaurant);
                 System.out.println("Le restaurant a bien été supprimé !");
             } else {
                 System.out.println("une erreur est survenue, le restaurant n'a pas pu être supprimé !");
