@@ -55,9 +55,11 @@ public class RestaurantServices {
         return cityMapper.create(city);
     }
 
-    public Restaurant createRestaurant(Restaurant restaurant){
-        restaurantMapper.create(restaurant);
-        return restaurant;
+    public Restaurant createRestaurant(String name, String description, String website, String street, City city, RestaurantType restaurantType) {
+        Restaurant restaurant = new Restaurant(name, description, website, street, city, restaurantType);
+        city.getRestaurants().add(restaurant);
+        restaurantType.getRestaurants().add(restaurant);
+        return restaurantMapper.create(restaurant);
     }
 
     public BasicEvaluation createBasicEvaluation(Restaurant restaurant, Boolean like) {
@@ -69,17 +71,20 @@ public class RestaurantServices {
             ipAddress = "Indisponible";
         }
         BasicEvaluation eval = new BasicEvaluation(new Date(), restaurant, like, ipAddress);
+        restaurant.getEvaluations().add(eval);
         return basicEvaluationMapper.create(eval);
     }
 
     public CompleteEvaluation createCompleteEvaluation(Restaurant restaurant, String comment, String username) {
-        CompleteEvaluation eval =new CompleteEvaluation(new Date(), restaurant, comment, username);
-        completeEvaluationMapper.create(eval);
+        CompleteEvaluation eval = new CompleteEvaluation(new Date(), restaurant, comment, username);
+        eval = completeEvaluationMapper.create(eval);
+        restaurant.getEvaluations().add(eval);
         return eval;
     }
 
     public Grade createGrade(Integer note, CompleteEvaluation eval, EvaluationCriteria currentCriteria) {
         Grade grade = new Grade(note, eval, currentCriteria);
+        eval.getGrades().add(grade);
         return gradeMapper.create(grade);
     }
 

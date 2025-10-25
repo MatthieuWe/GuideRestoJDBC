@@ -1,14 +1,10 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.persistence.*;
 import ch.hearc.ig.guideresto.services.RestaurantServices;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 
@@ -20,7 +16,6 @@ public class Application {
 
     private static Scanner scanner;
     private static final Logger logger = LogManager.getLogger(Application.class);
-    private static Connection connection;
 
     private static Set<RestaurantType> types;
     private static Set<Restaurant> restaurants;
@@ -41,7 +36,6 @@ public class Application {
             cities = restaurantServices.findAllCities();
             criterias = restaurantServices.findAllEvaluationCriteria();
 
-
             System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
             int choice;
             do {
@@ -55,7 +49,6 @@ public class Application {
             restaurantServices.shutdown();
         }
     }
-
 
     /**
      * Affichage du menu principal de l'application
@@ -76,7 +69,7 @@ public class Application {
      *
      * @param choice Un nombre entre 0 et 5.
      */
-    private static void proceedMainMenu(int choice) throws SQLException {
+    private static void proceedMainMenu(int choice) {
         switch (choice) {
             case 1:
                 showRestaurantsList();
@@ -213,7 +206,6 @@ public class Application {
             String cityName = readString();
             // crée la ville dans la DB et l'ajoute au Set
             City city = restaurantServices.createCity(zipCode, cityName);
-            cities.add(city);
             return city;
         }
 
@@ -287,10 +279,8 @@ public class Application {
             restaurantType = pickRestaurantType(types);
         } while (restaurantType == null);
 
-        Restaurant restaurant = new Restaurant(name, description, website, street, city, restaurantType);
-        city.getRestaurants().add(restaurant);
-        restaurantType.getRestaurants().add(restaurant);
-        restaurants.add(restaurantServices.createRestaurant(restaurant)); //service ici
+        Restaurant restaurant = restaurantServices.createRestaurant(name, description, website, street, city, restaurantType);
+        restaurants.add(restaurant);
 
         showRestaurant(restaurant);
     }
@@ -425,7 +415,7 @@ public class Application {
      * @param like       Est-ce un like ou un dislike ?
      */
     private static void addBasicEvaluation(Restaurant restaurant, Boolean like) {
-        restaurant.getEvaluations().add(restaurantServices.createBasicEvaluation(restaurant, like));
+        restaurantServices.createBasicEvaluation(restaurant, like);
         System.out.println("Votre vote a été pris en compte !");
     }
 
@@ -442,15 +432,13 @@ public class Application {
         String comment = readString();
 
         CompleteEvaluation eval = restaurantServices.createCompleteEvaluation(restaurant, comment, username);
-        restaurant.getEvaluations().add(eval);
 
         Grade grade; // L'utilisateur va saisir une note pour chaque critère existant.
         System.out.println("Veuillez svp donner une note entre 1 et 5 pour chacun de ces critères : ");
         for (EvaluationCriteria currentCriteria : criterias) {
             System.out.println(currentCriteria.getName() + " : " + currentCriteria.getDescription());
             Integer note = readInt();
-            grade = restaurantServices.createGrade(note, eval, currentCriteria);
-            eval.getGrades().add(grade);
+            restaurantServices.createGrade(note, eval, currentCriteria);
         }
 
         System.out.println("Votre évaluation a bien été enregistrée, merci !");
