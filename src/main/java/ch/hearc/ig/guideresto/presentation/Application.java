@@ -130,16 +130,7 @@ public class Application {
         System.out.println("Veuillez entrer une partie du nom recherché : ");
         String research = readString();
 
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // TODO Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = restaurantServices.findAllRestaurant();
-        Set<Restaurant> filteredList = new LinkedHashSet();
-
-        for (Restaurant currentRestaurant : fullList) { // On parcourt la liste complète et on ajoute les restaurants correspondants à la liste filtrée.
-            if (currentRestaurant.getName().toUpperCase().contains(research.toUpperCase())) { // On met tout en majuscules pour ne pas tenir compte de la casse
-                filteredList.add(currentRestaurant);
-            }
-        }
+        Set<Restaurant> filteredList = restaurantServices.searchByName(research);
 
         Restaurant restaurant = pickRestaurant(filteredList);
 
@@ -154,17 +145,7 @@ public class Application {
     private static void searchRestaurantByCity() {
         System.out.println("Veuillez entrer une partie du nom de la ville désirée : ");
         String research = readString();
-
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // TODO Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = restaurantServices.findAllRestaurant();
-        Set<Restaurant> filteredList = new LinkedHashSet();
-
-        for (Restaurant currentRestaurant : fullList) { // On parcourt la liste complète et on ajoute les restaurants correspondants à la liste filtrée.
-            if (currentRestaurant.getAddress().getCity().getCityName().toUpperCase().contains(research.toUpperCase())) { // On met tout en majuscules pour ne pas tenir compte de la casse
-                filteredList.add(currentRestaurant);
-            }
-        }
+        Set<Restaurant> filteredList = restaurantServices.searchByCity(research);
 
         Restaurant restaurant = pickRestaurant(filteredList);
 
@@ -222,20 +203,9 @@ public class Application {
      * Si l'utilisateur sélectionne un restaurant, ce dernier lui sera affiché.
      */
     private static void searchRestaurantByType() {
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // TODO Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = restaurantServices.findAllRestaurant();
-        Set<Restaurant> filteredList = new LinkedHashSet();
-
         RestaurantType chosenType = pickRestaurantType(restaurantServices.findAllRestaurantType());
 
-        if (chosenType != null) { // Si l'utilisateur a sélectionné un type, sinon on ne fait rien et la liste sera vide.
-            for (Restaurant currentRestaurant : fullList) {
-                if (currentRestaurant.getType() == chosenType) {
-                    filteredList.add(currentRestaurant);
-                }
-            }
-        }
+        Set<Restaurant> filteredList = restaurantServices.searchByType(chosenType);
 
         Restaurant restaurant = pickRestaurant(filteredList);
 

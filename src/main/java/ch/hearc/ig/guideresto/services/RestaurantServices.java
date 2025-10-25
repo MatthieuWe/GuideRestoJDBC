@@ -11,6 +11,7 @@ import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -50,6 +51,20 @@ public class RestaurantServices {
         return evaluationCriteriaMapper.findAll();
     }
 
+    public Set<Restaurant> searchByName(String search){
+        return restaurantMapper.findByName(search);
+    }
+    public Set<Restaurant> searchByCity(String search){
+        Set<City> cities = cityMapper.findByName(search);
+        Set<Restaurant> restaurants = new HashSet<>();
+        for (City city : cities){
+            restaurants.addAll(restaurantMapper.findForCity(city));
+        }
+        return restaurants;
+    }
+    public Set<Restaurant> searchByType(RestaurantType type){
+        return restaurantMapper.findForType(type);
+    }
     public City createCity(String zipCode, String cityName) {
         City city = new City(zipCode, cityName);
         return cityMapper.create(city);
