@@ -59,13 +59,20 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
             s.setInt(1, resto.getId());
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                completeEvaluations.add(new CompleteEvaluation(
-                        rs.getInt("numero"),
-                        rs.getDate("date_eval"),
-                        resto,
-                        rs.getString("commentaire"),
-                        rs.getString("nom_utilisateur")
-                ));
+                int id = rs.getInt("numero");
+                if (super.cache.containsKey(id)) {
+                    completeEvaluations.add((CompleteEvaluation) super.cache.get(id));
+                } else {
+                    CompleteEvaluation ce = new CompleteEvaluation(
+                            rs.getInt("numero"),
+                            rs.getDate("date_eval"),
+                            resto,
+                            rs.getString("commentaire"),
+                            rs.getString("nom_utilisateur")
+                    );
+                    completeEvaluations.add(ce);
+                    super.addToCache(ce);
+                }
             }
             rs.close();
         } catch (SQLException e) {

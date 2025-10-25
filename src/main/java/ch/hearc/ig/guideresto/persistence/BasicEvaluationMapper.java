@@ -73,19 +73,26 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             ResultSet rs = s.executeQuery();
 
             while (rs.next()) {
-                Boolean appreciation;
-                if ("T" == rs.getString("appreciation")) {
-                    appreciation=true;
+                int id = rs.getInt("numero");
+                if (super.cache.containsKey(id)) {
+                    basicEvaluations.add((BasicEvaluation) super.cache.get(id));
                 } else {
-                    appreciation=false;
+                    Boolean appreciation;
+                    if ("T" == rs.getString("appreciation")) {
+                        appreciation=true;
+                    } else {
+                        appreciation=false;
+                    }
+                    BasicEvaluation eval = new BasicEvaluation(
+                            rs.getInt("numero"),
+                            rs.getDate("date_eval"),
+                            resto,
+                            appreciation,
+                            rs.getString("adresse_ip")
+                    );
+                    basicEvaluations.add(eval);
+                    super.addToCache(eval);
                 }
-                basicEvaluations.add(new BasicEvaluation(
-                        rs.getInt("numero"),
-                        rs.getDate("date_eval"),
-                        resto,
-                        appreciation,
-                        rs.getString("adresse_ip")
-                ));
             }
             rs.close();
         } catch (SQLException e) {

@@ -189,7 +189,14 @@ public class GradeMapper extends AbstractMapper<Grade> {
             s.setInt(1, evaluation.getId());
             ResultSet rs = s.executeQuery();
             while (rs.next()) {
-                grades.add(this.loadGrade(rs, evaluation));
+                int id = rs.getInt("numeroNote");
+                if (super.cache.containsKey(id)) {
+                    grades.add((Grade) super.cache.get(id));
+                } else {
+                    Grade grade = this.loadGrade(rs, evaluation);
+                    grades.add(grade);
+                    super.addToCache(grade);
+                }
             }
             rs.close();
         } catch (SQLException e) {

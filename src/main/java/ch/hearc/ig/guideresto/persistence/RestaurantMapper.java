@@ -60,10 +60,22 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             s.setInt(1, city.getId());
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                restos.add(this.loadRestaurant(rs, city));
-                /* IMPORTANT ici on ne met pas les restos en cache. Cette méthode est utilisée pour lazy loader les restos
-                / d'un objet City. Si on les met en cache, on va créer des références circulaires, et ça, c'est pas bien.
+                /* On passe par la base AVANT le cache pour plusieurs raisons:
+                / 1) Il y a une clause where et donc on veut être sûr d'avoir une liste fraîche.
+                / 2) Ce genre de filtre serait relativement lourd algorithmiquement. On devrait accéder à chaque resto,
+                /  sa ville, et la comparer avec celle qui est fournie avant de décider quoi faire -> SQL est bien plus adapté
+                / 3) Cette méthode est utilisée pour lazy loader les restos d'une ville. Le principe même du lazy loader
+                /  est de retarder l'accès à la base; ça n'a pas de sens de lazy loader depuis un cache,
+                /  autant tout eager loader tout de suite.
                  */
+                int id = rs.getInt("num_resto");
+                if (super.cache.containsKey(id)) {
+                    restos.add((Restaurant) super.cache.get(id));
+                } else {
+                    Restaurant resto = this.loadRestaurant(rs, city);
+                    restos.add(resto);
+                    super.addToCache(resto);
+                }
             }
             rs.close();
         } catch (SQLException e) {
@@ -82,8 +94,14 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             s.setInt(1, type.getId());
             ResultSet rs = s.executeQuery();
             while(rs.next()) {
-                restos.add(this.loadRestaurant(rs, type));
-                // Idem, on ne met pas en cache
+                int id = rs.getInt("num_resto");
+                if (super.cache.containsKey(id)) {
+                    restos.add((Restaurant) super.cache.get(id));
+                } else {
+                    Restaurant resto = this.loadRestaurant(rs, type);
+                    restos.add(resto);
+                    super.addToCache(resto);
+                }
             }
             rs.close();
         } catch (SQLException e) {
