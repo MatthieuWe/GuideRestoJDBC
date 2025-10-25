@@ -62,6 +62,34 @@ public class CityMapper extends AbstractMapper<City> {
         }
         return cities;
     }
+    public Set<City> findByName(String partialName) {
+        Set<City> cities = new HashSet<>();
+        try {
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT * FROM villes" +
+                            " WHERE Upper(nom_ville) LIKE Upper(?)");
+            s.setString(1, "%" + partialName + "%");
+            ResultSet rs = s.executeQuery();
+            while(rs.next()) {
+                int id = rs.getInt("numero");
+                if(super.cache.containsKey(id)) {
+                    cities.add((City) super.cache.get(id));
+                } else {
+                    City city = new City(
+                            id,
+                            rs.getString("code_postal"),
+                            rs.getString("nom_ville")
+                    );
+                    cities.add(city);
+                    super.addToCache(city);
+                }
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return cities;
+    }
     public City create(City city) {
         try {
             String generatedColumns[] = { "numero" };
