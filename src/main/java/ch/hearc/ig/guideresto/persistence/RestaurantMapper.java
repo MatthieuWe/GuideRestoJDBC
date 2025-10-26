@@ -114,6 +114,35 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         }
         return restos;
     }
+    public Set<Restaurant> findByName(String partialName) {
+        Set<Restaurant> restos = new HashSet<>();
+        try {
+            PreparedStatement s = connection.prepareStatement(
+                    "SELECT r.numero num_resto, r.nom, r.description desc_resto, r.site_web," +
+                            " r.adresse, v.numero num_ville, v.nom_ville, v.code_postal," +
+                            " t.numero num_type, t.libelle, t.description desc_type" +
+                            " FROM restaurants r" +
+                            " INNER JOIN villes v ON r.fk_ville = v.numero" +
+                            " INNER JOIN types_gastronomiques t ON r.fk_type = t.numero" +
+                            " WHERE Upper(nom) LIKE Upper(?)");
+            s.setString(1, "%" + partialName + "%");
+            ResultSet rs = s.executeQuery();
+            while (rs.next()) {
+                int id = rs.getInt("numero");
+                if (super.cache.containsKey(id)) {
+                    restos.add((Restaurant) super.cache.get(id));
+                } else {
+                    Restaurant restaurant = this.loadRestaurant(rs);
+                    restos.add(restaurant);
+                    super.addToCache(restaurant);
+                }
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("SQLException: {}", e.getMessage());
+        }
+        return restos;
+    }
 
     public Restaurant create(Restaurant resto) {
         try {
